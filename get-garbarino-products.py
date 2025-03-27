@@ -28,16 +28,28 @@ driver = webdriver.Chrome(options=options)
 
 # URLs de las categorías
 category_urls = [
-    "https://www.garbarino.com/celulares-notebooks-y-tecnologia"
+    "https://www.garbarino.com/celulares-notebooks-y-tecnologia",
+    # "https://www.garbarino.com/smart-tv-audio-y-video",
+    # "https://www.garbarino.com/electrodomesticos",
+    # "https://www.garbarino.com/salud-y-belleza",
+    # "https://www.garbarino.com/hogar-muebles-y-jardin",
+    # "https://www.garbarino.com/bebes-y-ninos",
+    # "https://www.garbarino.com/deportes-y-tiempo-libre",
+    # "https://www.garbarino.com/construccion",
+    # "https://www.garbarino.com/herramientas",
+    # "https://www.garbarino.com/animales-y-mascotas",
+    # "https://www.garbarino.com/moda-y-accesorios",
+    # "https://www.garbarino.com/arte-libreria-y-merceria",
+    # "https://www.garbarino.com/mas-categorias"
 ]
 
 # Medir tiempo de inicio
 start_time = time.time()
 
-last_page = 3  # Recorrerá páginas 1 y 2
 # Scrapeo
 for base_url in category_urls:
-    for page in range(1, last_page):
+    page = 1
+    while True:
         print(f"Scrapeando {base_url} - Página {page}...")
         driver.get(f"{base_url}?page={page}")
         time.sleep(3)  # Esperar a que cargue la página
@@ -46,8 +58,9 @@ for base_url in category_urls:
         # Se busca el contenedor de cada producto
         products = soup.find_all("div", class_="product-card-design6-vertical-wrapper")
 
+        # Si no se encuentran productos, se sale del bucle para esta categoría.
         if not products:
-            print("No se encontraron productos en esta página.")
+            print("No se encontraron productos en esta página. Finalizando la búsqueda de esta categoría.")
             break
 
         for product in products:
@@ -56,20 +69,19 @@ for base_url in category_urls:
                 title_tag = product.find("div", class_="product-card-design6-vertical__name")
                 title = title_tag.get_text(strip=True) if title_tag else "N/A"
                 
-                # Precio final: buscamos el contenedor que incluya la clase "product-card-design6-vertical__price"
-                final_price_container = product.find("div", class_=lambda c: c and "product-card-design6-vertical__price" in c)
+                # Precio final: se busca el contenedor exacto con la clase correspondiente
+                final_price_container = product.select_one("div.product-card-design6-vertical__price")
                 if final_price_container:
-                    # Se obtienen todos los <span> y se toma el último, que contiene el precio numérico
                     spans = final_price_container.find_all("span")
                     final_price = spans[-1].get_text(strip=True).replace("$", "") if spans else "N/A"
                 else:
                     final_price = "N/A"
-                
-                # Precio original: se busca el contenedor que incluya la clase "product-card-design6-vertical__prev-price"
-                original_price_container = product.find("div", class_=lambda c: c and "product-card-design6-vertical__prev-price" in c)
+
+                # Precio original: se busca el contenedor exacto con la clase para precio anterior
+                original_price_container = product.select_one("div.product-card-design6-vertical__prev-price")
                 if original_price_container:
-                    # Dentro del contenedor se busca el div con clases que indiquen el precio (por ejemplo, "text-no-wrap" y "grey--text")
-                    orig_price_div = original_price_container.find("div", class_=lambda c: c and "text-no-wrap" in c and "grey--text" in c)
+                    # Buscamos el div que contiene los spans del precio anterior
+                    orig_price_div = original_price_container.select_one("div.text-no-wrap.grey--text")
                     if orig_price_div:
                         orig_spans = orig_price_div.find_all("span")
                         original_price = orig_spans[-1].get_text(strip=True).replace("$", "") if orig_spans else "N/A"
@@ -77,6 +89,7 @@ for base_url in category_urls:
                         original_price = "N/A"
                 else:
                     original_price = "N/A"
+
                 
                 # Link del producto
                 a_tag = product.find("a", class_="card-anchor")
@@ -103,6 +116,9 @@ for base_url in category_urls:
             except Exception as e:
                 print("Error:", e)
                 continue
+
+        page += 1  # Pasar a la siguiente página
+
 
 # Cierre de Selenium y PostgreSQL
 driver.quit()

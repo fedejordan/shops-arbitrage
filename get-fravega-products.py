@@ -46,10 +46,10 @@ category_urls = [
 # Medir tiempo de inicio
 start_time = time.time()
 
-last_page = 2 #25
 # Scrapeo
 for base_url in category_urls:
-    for page in range(1, last_page):
+    page = 1
+    while True:
         print(f"Scrapeando {base_url} - Página {page}...")
         driver.get(f"{base_url}/?page={page}")
         time.sleep(3)
@@ -57,8 +57,9 @@ for base_url in category_urls:
         soup = BeautifulSoup(driver.page_source, "html.parser")
         articles = soup.find_all("article", {"data-test-id": "result-item"})
 
+        # Si no se encuentran productos, se sale del bucle para esta categoría.
         if not articles:
-            print("No se encontraron productos en esta página.")
+            print("No se encontraron productos en esta página. Finalizando la búsqueda de esta categoría.")
             break
 
         for article in articles:
@@ -90,6 +91,8 @@ for base_url in category_urls:
             except Exception as e:
                 print("Error:", e)
                 continue
+
+        page += 1  # Pasar a la siguiente página
 
 # Cierre de Selenium y PostgreSQL
 driver.quit()
