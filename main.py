@@ -2,7 +2,23 @@ from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
 from bs4 import BeautifulSoup
 import time
-import csv
+import psycopg2
+import os
+from dotenv import load_dotenv
+import time
+
+# Cargar variables desde .env
+load_dotenv()
+
+# Conexión a PostgreSQL
+conn = psycopg2.connect(
+    dbname=os.getenv("DBNAME"),
+    user=os.getenv("DBUSER"),
+    password=os.getenv("DBPASSWORD"),
+    host=os.getenv("DBHOST"),
+    port=os.getenv("DBPORT")
+)
+cursor = conn.cursor()
 
 # Configuración de Selenium
 options = Options()
@@ -14,28 +30,27 @@ driver = webdriver.Chrome(options=options)
 # URLs de las categorías
 category_urls = [
     "https://www.fravega.com/l/tv-y-video/tv",
-    "https://www.fravega.com/l/lavado",
-    "https://www.fravega.com/l/celulares",
-    "https://www.fravega.com/l/heladeras-freezers-y-cavas",
-    "https://www.fravega.com/l/hogar",
-    "https://www.fravega.com/l/informatica",
-    "https://www.fravega.com/l/cocina",
-    "https://www.fravega.com/l/muebles",
-    "https://www.fravega.com/l/pequenos-electrodomesticos",
-    "https://www.fravega.com/l/audio",
-    "https://www.fravega.com/l/deportes-y-fitness",
-    "https://www.fravega.com/l/climatizacion",
-    "https://www.fravega.com/l/videojuegos"
+    # "https://www.fravega.com/l/lavado",
+    # "https://www.fravega.com/l/celulares",
+    # "https://www.fravega.com/l/heladeras-freezers-y-cavas",
+    # "https://www.fravega.com/l/hogar",
+    # "https://www.fravega.com/l/informatica",
+    # "https://www.fravega.com/l/cocina",
+    # "https://www.fravega.com/l/muebles",
+    # "https://www.fravega.com/l/pequenos-electrodomesticos",
+    # "https://www.fravega.com/l/audio",
+    # "https://www.fravega.com/l/deportes-y-fitness",
+    # "https://www.fravega.com/l/climatizacion",
+    # "https://www.fravega.com/l/videojuegos"
 ]
-
-all_products = []
 
 # Medir tiempo de inicio
 start_time = time.time()
 
+last_page = 2 #25
 # Scrapeo
 for base_url in category_urls:
-    for page in range(1, 25):  # Cambiá el rango si querés más o menos páginas por categoría
+    for page in range(1, last_page):
         print(f"Scrapeando {base_url} - Página {page}...")
         driver.get(f"{base_url}/?page={page}")
         time.sleep(3)
@@ -45,7 +60,7 @@ for base_url in category_urls:
 
         if not articles:
             print("No se encontraron productos en esta página.")
-            break  # Si una página ya no tiene resultados, salir del bucle
+            break
 
         for article in articles:
             try:
@@ -57,31 +72,34 @@ for base_url in category_urls:
                 link = "https://www.fravega.com" + link_tag["href"]
                 img_tag = article.find("img")
                 image_url = img_tag["src"] if img_tag else ""
+                category = base_url.split("/l/")[-1]
 
-                all_products.append({
-                    "title": title,
-                    "original_price": original_price.get_text(strip=True) if original_price else "",
-                    "final_price": final_price.get_text(strip=True) if final_price else "",
-                    "url": link,
-                    "image": image_url,
-                    "category": base_url.split("/l/")[-1]  # opcional: categoría para identificar el producto
-                })
+                cursor.execute("""
+                    INSERT INTO fravega_productos (title, original_price, final_price, url, image, category)
+                    VALUES (%s, %s, %s, %s, %s, %s)
+                """, (
+                    title,
+                    original_price.get_text(strip=True) if original_price else "",
+                    final_price.get_text(strip=True) if final_price else "",
+                    link,
+                    image_url,
+                    category
+                ))
 
-                print(f"Producto: {title} - ${final_price.get_text(strip=True)}")
+                print(f"Producto: {title} - ${final_price.get_text(strip=True) if final_price else 'N/A'}")
             except Exception as e:
                 print("Error:", e)
+                continue
 
+# Cierre de Selenium y PostgreSQL
 driver.quit()
-
-# Guardar CSV
-with open("fravega_productos.csv", "w", newline="", encoding="utf-8") as f:
-    writer = csv.DictWriter(f, fieldnames=all_products[0].keys())
-    writer.writeheader()
-    writer.writerows(all_products)
+conn.commit()
+cursor.close()
+conn.close()
 
 # Medir tiempo de fin
 end_time = time.time()
 elapsed_time = end_time - start_time
 
-print(f"\nScrapeo completo. {len(all_products)} productos guardados.")
+print(f"\nScrapeo completo.")
 print(f"Tiempo total de scrapeo: {elapsed_time:.2f} segundos.")
