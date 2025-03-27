@@ -1,4 +1,4 @@
-CREATE TABLE fravega_productos (
+CREATE TABLE products (
     id SERIAL PRIMARY KEY,
     title TEXT,
     original_price TEXT,
@@ -6,6 +6,6 @@ CREATE TABLE fravega_productos (
     url TEXT UNIQUE,
     image TEXT,
     category TEXT,
-	added_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+	added_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );

@@ -74,7 +74,7 @@ for base_url in category_urls:
                 category = base_url.split("/l/")[-1]
 
                 cursor.execute("""
-                    INSERT INTO fravega_productos (title, original_price, final_price, url, image, category, added_date, updated_date)
+                    INSERT INTO products (title, original_price, final_price, url, image, category, added_date, updated_date)
                     VALUES (%s, %s, %s, %s, %s, %s, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
                     ON CONFLICT (url) DO UPDATE SET updated_date = CURRENT_TIMESTAMP
                 """, (
