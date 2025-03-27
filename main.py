@@ -5,7 +5,6 @@ import time
 import psycopg2
 import os
 from dotenv import load_dotenv
-import time
 
 # Cargar variables desde .env
 load_dotenv()
@@ -75,8 +74,9 @@ for base_url in category_urls:
                 category = base_url.split("/l/")[-1]
 
                 cursor.execute("""
-                    INSERT INTO fravega_productos (title, original_price, final_price, url, image, category)
-                    VALUES (%s, %s, %s, %s, %s, %s)
+                    INSERT INTO fravega_productos (title, original_price, final_price, url, image, category, added_date, updated_date)
+                    VALUES (%s, %s, %s, %s, %s, %s, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+                    ON CONFLICT (url) DO UPDATE SET updated_date = CURRENT_TIMESTAMP
                 """, (
                     title,
                     original_price.get_text(strip=True) if original_price else "",
