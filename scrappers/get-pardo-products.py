@@ -1,8 +1,5 @@
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
-from selenium.webdriver.common.by import By
-from selenium.webdriver.support.ui import WebDriverWait
-from selenium.webdriver.support import expected_conditions as EC
 from bs4 import BeautifulSoup
 import time
 import psycopg2
@@ -30,98 +27,84 @@ options.add_argument("--disable-dev-shm-usage")
 options.add_argument("window-size=1920,1080")
 driver = webdriver.Chrome(options=options)
 
-# URL de la categoría (ejemplo)
-category_url = "https://www.pardo.com.ar/tv-y-video/"
+# Array de URLs de categorías
+category_urls = [
+    "https://www.pardo.com.ar/tv-y-video",
+    "https://www.pardo.com.ar/rodados",
+    "https://www.pardo.com.ar/bebes-y-ninos",
+    "https://www.pardo.com.ar/equipaje",
+    "https://www.pardo.com.ar/indumentaria-y-accesorios",
+    "https://www.pardo.com.ar/audio",
+    "https://www.pardo.com.ar/telefon%C3%ADa",
+    "https://www.pardo.com.ar/informatica",
+    "https://www.pardo.com.ar/electrodomesticos",
+    "https://www.pardo.com.ar/climatizacion",
+    "https://www.pardo.com.ar/hogar",
+    "https://www.pardo.com.ar/jardin",
+    "https://www.pardo.com.ar/belleza-y-salud"
+    # Agrega más categorías si es necesario.
+]
 
-driver.get(category_url)
-time.sleep(3)
-
-while True:
-    try:
-        # Espera y obtiene el span con la cuenta de productos
-        count_elem = WebDriverWait(driver, 5).until(
-            EC.presence_of_element_located((By.CSS_SELECTOR, "span.vtex-search-result-3-x-showingProductsCount"))
-        )
-        count_text = count_elem.text.strip()  # Ej: "20 de 63" o "63"
-        if " de " in count_text:
-            current_str, total_str = count_text.split(" de ")
-            current_count = int(current_str)
-            total_count = int(total_str)
-        else:
-            current_count = int(count_text)
-            total_count = current_count
-        print(f"Mostrando {current_count} de {total_count}")
-
-        # Si ya se cargaron todos, salimos del loop
-        if current_count >= total_count:
-            print("Todos los productos cargados.")
-            break
-
-        # Intentar hacer clic en el botón "Mostrar más"
-        mostrar_mas_btn = WebDriverWait(driver, 5).until(
-            EC.element_to_be_clickable((By.XPATH, "//button[.//div[contains(text(),'Mostrar más')]]"))
-        )
-        mostrar_mas_btn.click()
-        print("Clic en 'Mostrar más'...")
-    except Exception as e:
-        print("No se encontró el botón 'Mostrar más' o se produjo un error:", e)
-        break
-    time.sleep(3)
-
-# Hacemos un último scroll para asegurarnos que se hayan cargado todos los items
-try:
-    container = driver.find_element(By.ID, "gallery-layout-container")
-    last_height = driver.execute_script("return arguments[0].scrollHeight;", container)
+for category_url in category_urls:
+    print(f"\nProcesando categoría: {category_url}")
+    page = 1
     while True:
-        driver.execute_script("arguments[0].scrollTo(0, arguments[0].scrollHeight);", container)
-        time.sleep(2)
-        new_height = driver.execute_script("return arguments[0].scrollHeight;", container)
-        if new_height == last_height:
+        print(f"Scrapeando {category_url} - Página {page}...")
+        driver.get(f"{category_url}/?page={page}")
+        time.sleep(3)  # Esperar a que se cargue la página
+
+        # Parseamos el HTML con BeautifulSoup
+        soup = BeautifulSoup(driver.page_source, "html.parser")
+        products = soup.select("div.vtex-search-result-3-x-galleryItem")
+
+        # Si no se encuentran productos, se detiene la búsqueda en esa categoría
+        if not products:
+            print("No se encontraron productos en esta página. Finalizando búsqueda de esta categoría.")
             break
-        last_height = new_height
-except Exception as e:
-    print("No se pudo hacer scroll en el contenedor:", e)
 
-# Ahora obtenemos los elementos de producto usando Selenium
-product_elements = driver.find_elements(By.CSS_SELECTOR, "div.vtex-search-result-3-x-galleryItem")
-print(f"Se encontraron {len(product_elements)} productos en total.")
+        # Recorremos cada producto encontrado
+        for product in products:
+            try:
+                # Convertir el objeto Tag a string y volver a parsearlo (ya que no tiene get_attribute)
+                soup_item = BeautifulSoup(str(product), "html.parser")
+                section = soup_item.find("section", class_="vtex-product-summary-2-x-container")
+                if not section:
+                    continue
 
-# Para extraer datos, usamos BeautifulSoup sobre el outerHTML de cada elemento
-for elem in product_elements:
-    try:
-        soup_item = BeautifulSoup(elem.get_attribute("outerHTML"), "html.parser")
-        section = soup_item.find("section", class_="vtex-product-summary-2-x-container")
-        if not section:
-            continue
+                title_tag = section.find("h3", class_="vtex-product-summary-2-x-productNameContainer")
+                # Si no existe el h3, intentamos obtener el valor de aria-label
+                title = title_tag.get_text(strip=True) if title_tag else section.get("aria-label", "").strip()
 
-        title_tag = section.find("h3", class_="vtex-product-summary-2-x-productNameContainer")
-        title = title_tag.get_text(strip=True) if title_tag else section.get("aria-label", "").strip()
-        
-        a_tag = section.find("a", href=True)
-        link = "https://www.pardo.com.ar" + a_tag["href"] if a_tag else ""
-        
-        img_tag = section.find("img")
-        image_url = img_tag["src"] if img_tag and img_tag.get("src") else ""
-        
-        final_price_tag = section.find("span", class_="vtex-product-price-1-x-sellingPriceValue--summary")
-        final_price = final_price_tag.get_text(strip=True) if final_price_tag else ""
-        
-        original_price_tag = section.find("span", class_="vtex-product-price-1-x-listPriceValue--summary")
-        original_price = original_price_tag.get_text(strip=True) if original_price_tag else ""
-        
-        category = category_url.replace("https://www.pardo.com.ar/", "").strip("/")
-        
-        cursor.execute("""
-            INSERT INTO products (title, original_price, final_price, url, image, category, added_date, updated_date)
-            VALUES (%s, %s, %s, %s, %s, %s, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
-            ON CONFLICT (url) DO UPDATE SET updated_date = CURRENT_TIMESTAMP
-        """, (title, original_price, final_price, link, image_url, category))
-        
-        print(f"Producto: {title} - {final_price}")
-    except Exception as e:
-        print("Error al procesar un producto:", e)
-        continue
+                a_tag = section.find("a", href=True)
+                link = "https://www.pardo.com.ar" + a_tag["href"] if a_tag else ""
 
+                img_tag = section.find("img")
+                image_url = img_tag["src"] if img_tag and img_tag.get("src") else ""
+
+                final_price_tag = section.find("span", class_="vtex-product-price-1-x-sellingPriceValue--summary")
+                final_price = final_price_tag.get_text(strip=True) if final_price_tag else ""
+
+                original_price_tag = section.find("span", class_="vtex-product-price-1-x-listPriceValue--summary")
+                original_price = original_price_tag.get_text(strip=True) if original_price_tag else ""
+
+                # Derivar la categoría quitando el dominio y las barras
+                cat = category_url.replace("https://www.pardo.com.ar/", "").strip("/")
+
+                cursor.execute("""
+                    INSERT INTO products (title, original_price, final_price, url, image, category, added_date, updated_date)
+                    VALUES (%s, %s, %s, %s, %s, %s, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+                    ON CONFLICT (url) DO UPDATE SET updated_date = CURRENT_TIMESTAMP
+                """, (title, original_price, final_price, link, image_url, cat))
+
+                print(f"Producto: {title} - {final_price}")
+            except Exception as e:
+                print("Error al procesar un producto:", e)
+                continue
+
+        # Pasamos a la siguiente página
+        page += 1
+
+# Finalización
 driver.quit()
 conn.commit()
 cursor.close()
