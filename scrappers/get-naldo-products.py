@@ -28,7 +28,14 @@ driver = webdriver.Chrome(options=options)
 
 # URL de la categoría (puedes agregar más si lo requieres)
 category_urls = [
-    "https://www.naldo.com.ar/celulares/"
+    "https://www.naldo.com.ar/celulares/",
+    "https://www.naldo.com.ar/tv-audio-y-video",
+    "https://www.naldo.com.ar/climatizacion",
+    "https://www.naldo.com.ar/electrodomesticos",
+    "https://www.naldo.com.ar/tecnologia",
+    "https://www.naldo.com.ar/salud-belleza-y-fitness",
+    "https://www.naldo.com.ar/hogar-jardin-y-tiempo-libre",
+    "https://www.naldo.com.ar/rodados"
 ]
 
 # Medir tiempo de inicio
