@@ -1,0 +1,12 @@
+fastapi>=0.103.0       # Versión más reciente compatible con Python 3.13
+uvicorn>=0.23.0        # Versión actualizada
+sqlalchemy>=2.0.20     # Versión más estable para Python 3.13
+pydantic>=2.3.0        # Pydantic v2 es necesario para Python 3.13
+psycopg2-binary>=2.9.9 # Versión compatible con Python 3.13
+python-dotenv==1.0.0
+python-jose==3.3.0
+passlib==1.7.4
+bcrypt==4.0.1
+alembic==1.10.4
+
+# Alternativa: asyncpg si quieres usar conexiones asíncronas a PostgreSQL
