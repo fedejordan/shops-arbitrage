@@ -29,18 +29,18 @@ driver = webdriver.Chrome(options=options)
 # URLs de las categorías
 category_urls = [
     "https://www.garbarino.com/celulares-notebooks-y-tecnologia",
-    # "https://www.garbarino.com/smart-tv-audio-y-video",
-    # "https://www.garbarino.com/electrodomesticos",
-    # "https://www.garbarino.com/salud-y-belleza",
-    # "https://www.garbarino.com/hogar-muebles-y-jardin",
-    # "https://www.garbarino.com/bebes-y-ninos",
-    # "https://www.garbarino.com/deportes-y-tiempo-libre",
-    # "https://www.garbarino.com/construccion",
-    # "https://www.garbarino.com/herramientas",
-    # "https://www.garbarino.com/animales-y-mascotas",
-    # "https://www.garbarino.com/moda-y-accesorios",
-    # "https://www.garbarino.com/arte-libreria-y-merceria",
-    # "https://www.garbarino.com/mas-categorias"
+    "https://www.garbarino.com/smart-tv-audio-y-video",
+    "https://www.garbarino.com/electrodomesticos",
+    "https://www.garbarino.com/salud-y-belleza",
+    "https://www.garbarino.com/hogar-muebles-y-jardin",
+    "https://www.garbarino.com/bebes-y-ninos",
+    "https://www.garbarino.com/deportes-y-tiempo-libre",
+    "https://www.garbarino.com/construccion",
+    "https://www.garbarino.com/herramientas",
+    "https://www.garbarino.com/animales-y-mascotas",
+    "https://www.garbarino.com/moda-y-accesorios",
+    "https://www.garbarino.com/arte-libreria-y-merceria",
+    "https://www.garbarino.com/mas-categorias"
 ]
 
 # Medir tiempo de inicio

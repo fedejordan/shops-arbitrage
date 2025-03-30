@@ -29,18 +29,18 @@ driver = webdriver.Chrome(options=options)
 # URLs de las categorías
 category_urls = [
     "https://www.fravega.com/l/tv-y-video/tv",
-    # "https://www.fravega.com/l/lavado",
-    # "https://www.fravega.com/l/celulares",
-    # "https://www.fravega.com/l/heladeras-freezers-y-cavas",
-    # "https://www.fravega.com/l/hogar",
-    # "https://www.fravega.com/l/informatica",
-    # "https://www.fravega.com/l/cocina",
-    # "https://www.fravega.com/l/muebles",
-    # "https://www.fravega.com/l/pequenos-electrodomesticos",
-    # "https://www.fravega.com/l/audio",
-    # "https://www.fravega.com/l/deportes-y-fitness",
-    # "https://www.fravega.com/l/climatizacion",
-    # "https://www.fravega.com/l/videojuegos"
+    "https://www.fravega.com/l/lavado",
+    "https://www.fravega.com/l/celulares",
+    "https://www.fravega.com/l/heladeras-freezers-y-cavas",
+    "https://www.fravega.com/l/hogar",
+    "https://www.fravega.com/l/informatica",
+    "https://www.fravega.com/l/cocina",
+    "https://www.fravega.com/l/muebles",
+    "https://www.fravega.com/l/pequenos-electrodomesticos",
+    "https://www.fravega.com/l/audio",
+    "https://www.fravega.com/l/deportes-y-fitness",
+    "https://www.fravega.com/l/climatizacion",
+    "https://www.fravega.com/l/videojuegos"
 ]
 
 # Medir tiempo de inicio

@@ -30,24 +30,23 @@ driver = webdriver.Chrome(options=options)
 # URL de la categoría de On City
 category_urls = [
     "https://www.oncity.com/aire-libre",
-    # "https://www.oncity.com/audio-tv-y-video",
-    # "https://www.oncity.com/arte-libreria-y-merceria",
-    # "https://www.oncity.com/bebes",
-    # "https://www.oncity.com/belleza-y-cuidado-personal",
-    # "https://www.oncity.com/compra-internacional",
-    # "https://www.oncity.com/deportes-y-fitness",
-    # "https://www.oncity.com/electrodomesticos",
-    # "https://www.oncity.com/herramientas-y-construccion",
-    # "https://www.oncity.com/hogar",
-    # "https://www.oncity.com/iluminacion",
-    # "https://www.oncity.com/juegos-y-juguetes",
-    # "https://www.oncity.com/mascotas",
-    # "https://www.oncity.com/muebles",
-    # "https://www.oncity.com/salud-y-equipamiento-medico",
-    # "https://www.oncity.com/tecnologia",
-    # "https://www.oncity.com/tiempo-libre",
-    # "https://www.oncity.com/Autos-y-Motos",
-    
+    "https://www.oncity.com/audio-tv-y-video",
+    "https://www.oncity.com/arte-libreria-y-merceria",
+    "https://www.oncity.com/bebes",
+    "https://www.oncity.com/belleza-y-cuidado-personal",
+    "https://www.oncity.com/compra-internacional",
+    "https://www.oncity.com/deportes-y-fitness",
+    "https://www.oncity.com/electrodomesticos",
+    "https://www.oncity.com/herramientas-y-construccion",
+    "https://www.oncity.com/hogar",
+    "https://www.oncity.com/iluminacion",
+    "https://www.oncity.com/juegos-y-juguetes",
+    "https://www.oncity.com/mascotas",
+    "https://www.oncity.com/muebles",
+    "https://www.oncity.com/salud-y-equipamiento-medico",
+    "https://www.oncity.com/tecnologia",
+    "https://www.oncity.com/tiempo-libre",
+    "https://www.oncity.com/Autos-y-Motos",
 ]
 
 # Medir tiempo de inicio
@@ -56,7 +55,7 @@ start_time = time.time()
 # Scrapeo
 for base_url in category_urls:
     page = 1
-    while page == 1:
+    while True:
         print(f"Scrapeando {base_url} - Página {page}...")
         driver.get(f"{base_url}?page={page}")
         time.sleep(3)  # Esperar a que cargue la página
