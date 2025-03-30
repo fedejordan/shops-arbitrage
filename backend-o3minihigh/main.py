@@ -37,3 +37,9 @@ def read_products(query: str = "", db: Session = Depends(get_db)):
     else:
         products = db.query(models.Product).all()
     return products
+
+@app.get("/ping")
+def ping():
+    return {"status": "ok"}
+
+
