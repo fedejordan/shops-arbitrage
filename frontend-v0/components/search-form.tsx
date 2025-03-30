@@ -28,7 +28,7 @@ export function SearchForm() {
     setSearched(true)
 
     try {
-      const response = await fetch(`http://127.0.0.1:8000/products?query=${encodeURIComponent(searchQuery)}`)
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/products?query=${encodeURIComponent(searchQuery)}`)
       const data = await response.json()
       setProducts(data)
 
