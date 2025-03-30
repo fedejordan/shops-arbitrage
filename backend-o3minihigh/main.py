@@ -31,6 +31,7 @@ def get_db():
 # Endpoint para obtener productos, con opción de búsqueda por título
 @app.get("/products", response_model=List[schemas.ProductBase])
 def read_products(query: str = "", db: Session = Depends(get_db)):
+    print("Request a /products - query:", query)
     if query:
         products = db.query(models.Product).filter(models.Product.title.ilike(f"%{query}%")).all()
     else:
