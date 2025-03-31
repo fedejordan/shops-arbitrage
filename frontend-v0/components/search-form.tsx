@@ -75,9 +75,14 @@ export function SearchForm() {
           ) : (
             <>
               <h2 className="text-xl font-semibold mb-4">
-                {products.length > 0
-                  ? `Resultados para "${searchQuery}"`
-                  : `No se encontraron resultados para "${searchQuery}"`}
+                {products.length > 0 ? (
+                  <>
+                    Resultados para "{searchQuery}"{" "}
+                    <span className="text-muted-foreground text-base">({products.length})</span>
+                  </>
+                ) : (
+                  `No se encontraron resultados para "${searchQuery}"`
+                )}
               </h2>
               <ProductList products={products} />
             </>
