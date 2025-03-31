@@ -5,7 +5,18 @@ import time
 import psycopg2
 import os
 from dotenv import load_dotenv
+import logging
+import re
 
+# ─────────────────────────────────────────────────────────────
+# Configuración del log de errores
+logging.basicConfig(
+    filename='scraper_errors_naldo.log',
+    level=logging.ERROR,
+    format='%(asctime)s - %(levelname)s - %(message)s'
+)
+
+# ─────────────────────────────────────────────────────────────
 # Cargar variables desde .env
 load_dotenv()
 
@@ -19,6 +30,31 @@ conn = psycopg2.connect(
 )
 cursor = conn.cursor()
 
+# Insertar retailer si no existe
+retailer_name = "Naldo"
+retailer_url = "https://www.naldo.com.ar"
+
+cursor.execute("""
+    INSERT INTO retailers (name, url)
+    VALUES (%s, %s)
+    ON CONFLICT (url) DO NOTHING
+""", (retailer_name, retailer_url))
+cursor.execute("SELECT id FROM retailers WHERE url = %s", (retailer_url,))
+retailer_id = cursor.fetchone()[0]
+
+# ─────────────────────────────────────────────────────────────
+# Función para limpiar precios
+def parse_price(price_str):
+    if not price_str or price_str == "N/A":
+        return None
+    try:
+        cleaned = re.sub(r"[^\d,]", "", price_str).replace(".", "").replace(",", ".")
+        return float(cleaned)
+    except Exception as e:
+        logging.error(f"⚠️ Error al convertir precio: {price_str} - {e}")
+        return None
+
+# ─────────────────────────────────────────────────────────────
 # Configuración de Selenium
 options = Options()
 options.add_argument("--headless")
@@ -26,7 +62,6 @@ options.add_argument("--no-sandbox")
 options.add_argument("--disable-dev-shm-usage")
 driver = webdriver.Chrome(options=options)
 
-# URL de la categoría (puedes agregar más si lo requieres)
 category_urls = [
     "https://www.naldo.com.ar/celulares/",
     "https://www.naldo.com.ar/tv-audio-y-video",
@@ -38,7 +73,6 @@ category_urls = [
     "https://www.naldo.com.ar/rodados"
 ]
 
-# Medir tiempo de inicio
 start_time = time.time()
 
 # Scrapeo
@@ -46,78 +80,71 @@ for base_url in category_urls:
     page = 1
     while True:
         print(f"Scrapeando {base_url} - Página {page}...")
-        # Se utiliza el query param "page"
-        driver.get(f"{base_url}?page={page}")
-        time.sleep(3)  # Esperar a que cargue la página
-        
-        soup = BeautifulSoup(driver.page_source, "html.parser")
-        # Se busca el contenedor de cada producto usando el selector característico de Naldo
-        products = soup.select("div.naldoar-search-result-3-x-galleryItem")
-        
-        # Si no se encuentran productos, se sale del bucle para esta categoría.
-        if not products:
-            print("No se encontraron productos en esta página. Finalizando la búsqueda de esta categoría.")
+        try:
+            driver.get(f"{base_url}?page={page}")
+            time.sleep(3)
+            soup = BeautifulSoup(driver.page_source, "html.parser")
+            products = soup.select("div.naldoar-search-result-3-x-galleryItem")
+
+            if not products:
+                print("🚫 No se encontraron productos en esta página. Fin de categoría.")
+                break
+
+            for product in products:
+                try:
+                    title_tag = product.find("span", class_="vtex-product-summary-2-x-productBrand")
+                    title = title_tag.get_text(strip=True) if title_tag else "N/A"
+
+                    final_price_tag = product.select_one("span.vtex-product-price-1-x-sellingPriceValue")
+                    final_price = final_price_tag.get_text(strip=True) if final_price_tag else ""
+                    
+                    original_price_tag = product.select_one("span.vtex-product-price-1-x-listPriceValue")
+                    original_price = original_price_tag.get_text(strip=True) if original_price_tag else ""
+
+                    a_tag = product.find("a", class_="vtex-product-summary-2-x-clearLink")
+                    link = "https://www.naldo.com.ar" + a_tag["href"] if a_tag and "href" in a_tag.attrs else ""
+
+                    img_tag = product.find("img", class_="vtex-product-summary-2-x-image")
+                    image_url = img_tag["src"] if img_tag and "src" in img_tag.attrs else ""
+
+                    parts = base_url.strip("/").split("/")
+                    category = parts[-1] if parts else "N/A"
+
+                    parsed_original = parse_price(original_price)
+                    parsed_final = parse_price(final_price)
+
+                    cursor.execute("""
+                        INSERT INTO products (title, original_price, final_price, url, image, category, retailer_id, added_date, updated_date)
+                        VALUES (%s, %s, %s, %s, %s, %s, %s, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+                        ON CONFLICT (url) DO UPDATE SET updated_date = CURRENT_TIMESTAMP
+                    """, (
+                        title,
+                        parsed_original,
+                        parsed_final,
+                        link,
+                        image_url,
+                        category,
+                        retailer_id
+                    ))
+
+                    print(f"✔ Producto: {title} | Final: {parsed_final} | Original: {parsed_original if parsed_original else 'N/A'}")
+                except Exception as e:
+                    logging.error(f"🛑 Error procesando producto en {base_url} página {page}: {e}")
+                    continue
+
+            conn.commit()
+            print(f"💾 Página {page} guardada.\n")
+            page += 1
+        except Exception as e:
+            logging.error(f"🔥 Error al cargar página {page} de {base_url}: {e}")
             break
 
-        for product in products:
-            try:
-                # Título: se extrae del span con clase 'vtex-product-summary-2-x-productBrand'
-                title_tag = product.find("span", class_="vtex-product-summary-2-x-productBrand")
-                title = title_tag.get_text(strip=True) if title_tag else "N/A"
-
-                # Precio final: se extrae del span con clase 'vtex-product-price-1-x-sellingPriceValue'
-                final_price_tag = product.select_one("span.vtex-product-price-1-x-sellingPriceValue")
-                if final_price_tag:
-                    final_price = final_price_tag.get_text(strip=True).replace("$", "").replace("\xa0", "")
-                else:
-                    final_price = "N/A"
-
-                # Precio original: se extrae del span con clase 'vtex-product-price-1-x-listPriceValue'
-                original_price_tag = product.select_one("span.vtex-product-price-1-x-listPriceValue")
-                if original_price_tag:
-                    original_price = original_price_tag.get_text(strip=True).replace("$", "").replace("\xa0", "")
-                else:
-                    original_price = "N/A"
-
-                # Link del producto: se toma el href del <a> con clase 'vtex-product-summary-2-x-clearLink'
-                a_tag = product.find("a", class_="vtex-product-summary-2-x-clearLink")
-                link = "https://www.naldo.com.ar" + a_tag["href"] if a_tag and "href" in a_tag.attrs else "N/A"
-
-                # Imagen: se toma el src del tag <img> con clase 'vtex-product-summary-2-x-image'
-                img_tag = product.find("img", class_="vtex-product-summary-2-x-image")
-                image_url = img_tag["src"] if img_tag and "src" in img_tag.attrs else ""
-
-                # Marca: en este caso no hay un selector explícito, se puede dejar vacío o parsear del título
-                brand = ""
-
-                # Categoría: derivada de la URL, asumiendo que es la carpeta intermedia
-                # Ejemplo: "https://www.naldo.com.ar/celulares/" -> "celulares"
-                parts = base_url.strip("/").split("/")
-                category = parts[-1] if parts else "N/A"
-
-                # Insertar en la base de datos
-                cursor.execute("""
-                    INSERT INTO products (title, original_price, final_price, url, image, category, added_date, updated_date)
-                    VALUES (%s, %s, %s, %s, %s, %s, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
-                    ON CONFLICT (url) DO UPDATE SET updated_date = CURRENT_TIMESTAMP
-                """, (title, original_price, final_price, link, image_url, category))
-                
-                print(f"Producto: {title} - Final: ${final_price} - Original: ${original_price}")
-            except Exception as e:
-                print("Error:", e)
-                continue
-
-        page += 1  # Pasar a la siguiente página
-
-# Cierre de Selenium y PostgreSQL
+# Finalización
 driver.quit()
-conn.commit()
 cursor.close()
 conn.close()
 
-# Medir tiempo de fin
 end_time = time.time()
 elapsed_time = end_time - start_time
-
-print(f"\nScrapeo completo.")
-print(f"Tiempo total de scrapeo: {elapsed_time:.2f} segundos.")
+print(f"\n✅ Scrapeo completo.")
+print(f"⏱ Tiempo total: {elapsed_time:.2f} segundos.")
