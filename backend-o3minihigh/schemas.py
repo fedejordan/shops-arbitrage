@@ -1,11 +1,12 @@
 from pydantic import BaseModel
 from datetime import datetime
+from typing import Optional
 
 class ProductBase(BaseModel):
     id: int
     title: str
-    original_price: float
-    final_price: float
+    original_price: Optional[float]
+    final_price: Optional[float]
     url: str
     image: str | None = None
     category: str
