@@ -5,7 +5,18 @@ import time
 import psycopg2
 import os
 from dotenv import load_dotenv
+import logging
+import re
 
+# ─────────────────────────────────────────────────────────────
+# Configuración del log de errores
+logging.basicConfig(
+    filename='scraper_errors_megatone.log',
+    level=logging.ERROR,
+    format='%(asctime)s - %(levelname)s - %(message)s'
+)
+
+# ─────────────────────────────────────────────────────────────
 # Cargar variables desde .env
 load_dotenv()
 
@@ -19,6 +30,21 @@ conn = psycopg2.connect(
 )
 cursor = conn.cursor()
 
+# Insertar "Megatone" si no existe en la tabla retailers
+retailer_name = "Megatone"
+retailer_url = "https://www.megatone.net"
+
+cursor.execute("""
+    INSERT INTO retailers (name, url)
+    VALUES (%s, %s)
+    ON CONFLICT (url) DO NOTHING
+""", (retailer_name, retailer_url))
+
+# Obtener su ID
+cursor.execute("SELECT id FROM retailers WHERE url = %s", (retailer_url,))
+retailer_id = cursor.fetchone()[0]
+
+# ─────────────────────────────────────────────────────────────
 # Configuración de Selenium
 options = Options()
 options.add_argument("--headless")
@@ -26,7 +52,7 @@ options.add_argument("--no-sandbox")
 options.add_argument("--disable-dev-shm-usage")
 driver = webdriver.Chrome(options=options)
 
-# URLs de las categorías de Megatone
+# URLs de categorías
 category_urls = [
     "https://www.megatone.net/listado/tv-audio-video/",
     "https://www.megatone.net/listado/tecnologia/",
@@ -40,91 +66,100 @@ category_urls = [
     "https://www.megatone.net/listado/otras-categorias/"
 ]
 
+# ─────────────────────────────────────────────────────────────
+# Función para limpiar y convertir precios
+def parse_price(price_str):
+    if not price_str:
+        return None
+    try:
+        cleaned = re.sub(r"[^\d,]", "", price_str).replace(".", "").replace(",", ".")
+        return float(cleaned)
+    except Exception as e:
+        logging.error(f"⚠️ Error al convertir precio: {price_str} - {e}")
+        return None
+
 # Medir tiempo de inicio
 start_time = time.time()
 
 # Scrapeo
 for base_url in category_urls:
     page = 1
+    category = base_url.strip("/").split("/")[-1]
     while True:
-        print(f"Scrapeando {base_url} - Página {page}...")
-        # Usamos el parámetro de paginado ?p_=
-        url = f"{base_url}?p_={page}"
-        driver.get(url)
-        time.sleep(3)  # Espera para que cargue la página
+        print(f"Scrapeando {category} - Página {page}...")
+        try:
+            driver.get(f"{base_url}?p_={page}")
+            time.sleep(3)
 
-        soup = BeautifulSoup(driver.page_source, "html.parser")
-        # Se buscan los contenedores de productos mediante el <a> con la clase "CajaProductoGrillaListado"
-        products = soup.find_all("a", class_="CajaProductoGrillaListado")
+            soup = BeautifulSoup(driver.page_source, "html.parser")
+            products = soup.find_all("a", class_="CajaProductoGrillaListado")
 
-        # Si no se encuentran productos, se finaliza el scrapeo de la categoría.
-        if not products:
-            print("No se encontraron productos en esta página. Finalizando la búsqueda de esta categoría.")
+            if not products:
+                print(f"🚫 No se encontraron productos en {category} página {page}. Fin de categoría.")
+                break
+
+            for product in products:
+                try:
+                    title_tag = product.find("h3", class_="TituloListado")
+                    title = title_tag.get_text(strip=True) if title_tag else "Sin Título"
+
+                    original_price_tag = product.select_one("div.PrecioTachado")
+                    original_price_text = original_price_tag.get_text(strip=True) if original_price_tag else ""
+                    
+                    if original_price_text:
+                        final_price_tag = product.select_one("div.Precio.fNova-Light")
+                    else:
+                        final_price_tag = product.select_one("div.Precio.AjustePrecioMostrado")
+                        original_price_text = ""
+                    
+                    final_price_text = final_price_tag.get_text(strip=True) if final_price_tag else ""
+
+                    # Limpiar precios
+                    original_price = parse_price(original_price_text)
+                    final_price = parse_price(final_price_text)
+
+                    # URL del producto
+                    link = product.get("href")
+                    if link and not link.startswith("http"):
+                        link = "https://www.megatone.net" + link
+
+                    # Imagen
+                    img_tag = product.find("img", class_="imagenListado")
+                    image_url = img_tag.get("src") if img_tag else ""
+
+                    cursor.execute("""
+                        INSERT INTO products (title, original_price, final_price, url, image, category, retailer_id, added_date, updated_date)
+                        VALUES (%s, %s, %s, %s, %s, %s, %s, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+                        ON CONFLICT (url) DO UPDATE SET updated_date = CURRENT_TIMESTAMP
+                    """, (
+                        title,
+                        original_price,
+                        final_price,
+                        link,
+                        image_url,
+                        category,
+                        retailer_id
+                    ))
+
+                    print(f"✔ Producto: {title} | Final: {final_price} | Original: {original_price if original_price else 'N/A'}")
+                except Exception as e:
+                    logging.error(f"🛑 Error procesando producto en {category} página {page}: {e}")
+                    continue
+
+            conn.commit()
+            print(f"💾 Página {page} de {category} guardada.\n")
+            page += 1
+
+        except Exception as e:
+            logging.error(f"🔥 Error al cargar página {page} de {category}: {e}")
             break
 
-        for product in products:
-            try:
-                # Título: se extrae del <h3> con la clase "TituloListado"
-                title_tag = product.find("h3", class_="TituloListado")
-                title = title_tag.get_text(strip=True) if title_tag else "Sin Título"
-
-                # Precios:
-                # Primero se busca el contenedor del precio original (PrecioTachado)
-                original_price_tag = product.select_one("div.PrecioTachado")
-                original_price_text = original_price_tag.get_text(strip=True) if original_price_tag else ""
-                
-                if original_price_text:
-                    # Producto en rebaja: se extrae el precio final del contenedor con la clase "Precio fNova-Light"
-                    final_price_tag = product.select_one("div.Precio.fNova-Light")
-                    final_price_text = final_price_tag.get_text(strip=True) if final_price_tag else ""
-                else:
-                    # Producto sin rebaja: se toma el precio final del contenedor "Precio AjustePrecioMostrado"
-                    final_price_tag = product.select_one("div.Precio.AjustePrecioMostrado")
-                    final_price_text = final_price_tag.get_text(strip=True) if final_price_tag else ""
-                    original_price_text = ""  # Se mantiene vacío
-                    
-                # URL: se extrae del atributo href del <a>, se completa si es relativa
-                link = product.get("href")
-                if link and not link.startswith("http"):
-                    link = "https://www.megatone.net" + link
-
-                # Imagen: se obtiene del <img> con la clase "imagenListado"
-                img_tag = product.find("img", class_="imagenListado")
-                image_url = img_tag.get("src") if img_tag else ""
-
-                # Categoría: se extrae de la URL base (último segmento de la ruta)
-                category = base_url.strip("/").split("/")[-1]
-
-                # Inserción en la base de datos
-                cursor.execute("""
-                    INSERT INTO products (title, original_price, final_price, url, image, category, added_date, updated_date)
-                    VALUES (%s, %s, %s, %s, %s, %s, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
-                    ON CONFLICT (url) DO UPDATE SET updated_date = CURRENT_TIMESTAMP
-                """, (
-                    title,
-                    original_price_text,
-                    final_price_text,
-                    link,
-                    image_url,
-                    category
-                ))
-
-                print(f"Producto: {title} - {final_price_text}")
-            except Exception as e:
-                print("Error:", e)
-                continue
-
-        page += 1  # Pasar a la siguiente página
-
-# Cierre de Selenium y PostgreSQL
+# Cierre
 driver.quit()
-conn.commit()
 cursor.close()
 conn.close()
 
-# Medir tiempo de fin
 end_time = time.time()
 elapsed_time = end_time - start_time
-
-print(f"\nScrapeo completo.")
-print(f"Tiempo total de scrapeo: {elapsed_time:.2f} segundos.")
+print(f"\n✅ Scrapeo completo.")
+print(f"⏱ Tiempo total: {elapsed_time:.2f} segundos.")
