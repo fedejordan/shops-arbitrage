@@ -5,8 +5,19 @@ from bs4 import BeautifulSoup
 import time
 import psycopg2
 import os
+import re
 from dotenv import load_dotenv
+import logging
 
+# ─────────────────────────────────────────────────────────────
+# Logging
+logging.basicConfig(
+    filename='scraper_errors_whirlpool.log',
+    level=logging.ERROR,
+    format='%(asctime)s - %(levelname)s - %(message)s'
+)
+
+# ─────────────────────────────────────────────────────────────
 # Cargar variables del entorno
 load_dotenv()
 
@@ -19,6 +30,30 @@ conn = psycopg2.connect(
     port=os.getenv("DBPORT")
 )
 cursor = conn.cursor()
+
+# ─────────────────────────────────────────────────────────────
+# Insertar retailer si no existe
+retailer_name = "Whirlpool"
+retailer_url = "https://www.whirlpool.com.ar"
+
+cursor.execute("""
+    INSERT INTO retailers (name, url)
+    VALUES (%s, %s)
+    ON CONFLICT (url) DO NOTHING
+""", (retailer_name, retailer_url))
+
+cursor.execute("SELECT id FROM retailers WHERE url = %s", (retailer_url,))
+retailer_id = cursor.fetchone()[0]
+
+# ─────────────────────────────────────────────────────────────
+# Función para parsear precios
+def parse_price(price_str):
+    try:
+        cleaned = re.sub(r"[^\d,]", "", price_str).replace(".", "").replace(",", ".")
+        return float(cleaned)
+    except Exception as e:
+        logging.error(f"⚠️ Error al parsear precio '{price_str}': {e}")
+        return None
 
 # Configuración de Selenium
 options = Options()
@@ -39,62 +74,80 @@ category_urls = [
 
 # Scrapeo
 for base_url in category_urls:
-    print(f"\nScrapeando categoría: {base_url}")
-    driver.get(base_url)
-    time.sleep(4)
+    print(f"\n🔍 Scrapeando categoría: {base_url}")
+    try:
+        driver.get(base_url)
+        time.sleep(4)
 
-    previous_count = -1
-    while True:
+        previous_count = -1
+        while True:
+            soup = BeautifulSoup(driver.page_source, "html.parser")
+            products = soup.select("div.vtex-search-result-3-x-galleryItem")
+            current_count = len(products)
+
+            if current_count == previous_count:
+                break  # No se cargaron más productos
+            previous_count = current_count
+
+            try:
+                show_more = driver.find_element(By.XPATH, "//button[contains(., 'Mostrar más')]")
+                driver.execute_script("arguments[0].click();", show_more)
+                time.sleep(3)
+            except Exception:
+                break  # No hay botón, fin del paginado
+
+        # Extraer productos cargados
         soup = BeautifulSoup(driver.page_source, "html.parser")
         products = soup.select("div.vtex-search-result-3-x-galleryItem")
-        current_count = len(products)
 
-        if current_count == previous_count:
-            break  # No se cargaron más productos
-        previous_count = current_count
+        for product in products:
+            try:
+                title_tag = product.select_one("span.vtex-product-summary-2-x-brandName")
+                title = title_tag.get_text(strip=True) if title_tag else "N/A"
 
-        try:
-            show_more = driver.find_element(By.XPATH, "//button[contains(., 'Mostrar más')]")
-            driver.execute_script("arguments[0].click();", show_more)
-            time.sleep(3)
-        except Exception:
-            break  # No hay botón, fin del paginado
+                original_price_tag = product.select_one("div.whirlpoolargio-store-theme-1-x-ListPrice")
+                original_price_str = original_price_tag.get_text(strip=True) if original_price_tag else ""
 
-    # Extraer productos
-    for product in products:
-        try:
-            title_tag = product.select_one("span.vtex-product-summary-2-x-brandName")
-            title = title_tag.get_text(strip=True) if title_tag else "N/A"
+                final_price_tag = product.select_one("div.whirlpoolargio-store-theme-1-x-SellingPrice span")
+                final_price_str = final_price_tag.get_text(strip=True) if final_price_tag else ""
 
-            original_price_tag = product.select_one("div.whirlpoolargio-store-theme-1-x-ListPrice")
-            original_price = original_price_tag.get_text(strip=True).replace("$", "").replace("\xa0", "").replace(" ", "") if original_price_tag else "N/A"
+                original_price = parse_price(original_price_str)
+                final_price = parse_price(final_price_str)
 
-            final_price_tag = product.select_one("div.whirlpoolargio-store-theme-1-x-SellingPrice span")
-            final_price = final_price_tag.get_text(strip=True).replace("$", "").replace("\xa0", "").replace(" ", "") if final_price_tag else "N/A"
+                image_tag = product.select_one("img.vtex-product-summary-2-x-imageNormal")
+                image_url = image_tag["src"] if image_tag else ""
 
-            image_tag = product.select_one("img.vtex-product-summary-2-x-imageNormal")
-            image_url = image_tag["src"] if image_tag else ""
+                a_tag = product.select_one("a.vtex-product-summary-2-x-clearLink")
+                link = "https://www.whirlpool.com.ar" + a_tag["href"] if a_tag else "N/A"
 
-            a_tag = product.select_one("a.vtex-product-summary-2-x-clearLink")
-            link = "https://www.whirlpool.com.ar" + a_tag["href"] if a_tag else "N/A"
+                category = base_url.split("/")[-1]
 
-            category = base_url.split("/")[-1]
+                cursor.execute("""
+                    INSERT INTO products (title, original_price, final_price, url, image, category, retailer_id, added_date, updated_date)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+                    ON CONFLICT (url) DO UPDATE SET updated_date = CURRENT_TIMESTAMP
+                """, (
+                    title,
+                    original_price,
+                    final_price,
+                    link,
+                    image_url,
+                    category,
+                    retailer_id
+                ))
 
-            # Insertar en base
-            cursor.execute("""
-                INSERT INTO products (title, original_price, final_price, url, image, category, added_date, updated_date)
-                VALUES (%s, %s, %s, %s, %s, %s, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
-                ON CONFLICT (url) DO UPDATE SET updated_date = CURRENT_TIMESTAMP
-            """, (title, original_price, final_price, link, image_url, category))
+                conn.commit()
+                print(f"✔ {title} | Final: ${final_price} | Original: ${original_price if original_price else 'N/A'}")
+            except Exception as e:
+                logging.error(f"🛑 Error procesando producto: {e}")
+                continue
 
-            print(f"✓ {title} | Final: ${final_price} | Original: ${original_price}")
-
-        except Exception as e:
-            print("Error en producto:", e)
+    except Exception as e:
+        logging.error(f"🔥 Error en categoría {base_url}: {e}")
+        continue
 
 # Finalizar
 driver.quit()
-conn.commit()
 cursor.close()
 conn.close()
-print("\nScrapeo completo.")
+print("\n✅ Scrapeo completo.")
