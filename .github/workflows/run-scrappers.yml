@@ -1,4 +1,4 @@
-name: Run All Scrapers
+name: Run All Scrapers Separately
 
 on:
   workflow_dispatch:
@@ -6,6 +6,23 @@ on:
 jobs:
   run-scrapers:
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        scraper:
+          - samsung-argentina
+          - oncity
+          - cetrogar
+          - pardo
+          - naldo
+          - megatone
+          - novogar
+          - musimundo
+          - garbarino
+          - philco
+          - fravega
+          - whirlpool-argentina
+
+    name: Run scraper: ${{ matrix.scraper }}
 
     steps:
     - name: Checkout repo
@@ -31,7 +48,7 @@ jobs:
         echo "CHROME_BIN=$(which google-chrome)" >> $GITHUB_ENV
         echo "PATH=$PATH:/usr/bin/google-chrome" >> $GITHUB_ENV
 
-    - name: Run all scraping scripts
+    - name: Run scraper script
       env:
         DBNAME: ${{ secrets.DBNAME }}
         DBUSER: ${{ secrets.DBUSER }}
@@ -40,7 +57,12 @@ jobs:
         DBPORT: ${{ secrets.DBPORT }}
       run: |
         cd scrapers
-        for script in get-*-products.py; do
-          echo "Running $script"
-          python "$script"
-        done
+        python get-${{ matrix.scraper }}-products.py || echo "Script failed with exit code $?"
+
+    - name: Upload error log if it exists
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: scraper-errors-${{ matrix.scraper }}
+        path: scrapers/scraper_errors_${{ matrix.scraper }}.log
+        if-no-files-found: ignore
