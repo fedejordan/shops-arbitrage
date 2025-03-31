@@ -2,6 +2,12 @@ from pydantic import BaseModel
 from datetime import datetime
 from typing import Optional
 
+class RetailerBase(BaseModel):
+    name: str
+
+    class Config:
+        from_attributes = True
+
 class ProductBase(BaseModel):
     id: int
     title: str
@@ -12,6 +18,9 @@ class ProductBase(BaseModel):
     category: str
     added_date: datetime
     updated_date: datetime
+    retailer: RetailerBase
 
     class Config:
-        orm_mode = True
+        from_attributes = True
+
+

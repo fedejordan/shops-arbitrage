@@ -30,12 +30,17 @@ export function ProductList({ products }: { products: Product[] }) {
               </div>
               <div className="p-4 sm:w-2/3">
                 <div className="flex flex-col h-full justify-between">
-                  <div>
-                    <h3 className="font-medium line-clamp-2 mb-1">{product.title}</h3>
-                    <Badge variant="outline" className="mb-2">
-                      {product.category || "Sin categoría"}
-                    </Badge>
+                <div>
+                  <h3 className="font-medium line-clamp-2 mb-1">{product.title}</h3>
+                  <div className="flex flex-wrap gap-2 mb-2">
+                    <Badge variant="outline">{product.category || "Sin categoría"}</Badge>
+                    {product.retailer?.name && (
+                      <Badge variant="secondary" className="text-xs">
+                        {product.retailer.name}
+                      </Badge>
+                    )}
                   </div>
+                </div>
 
                   <div className="mt-2">
                     <div className="flex items-baseline gap-2">
