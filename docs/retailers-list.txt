@@ -4,16 +4,13 @@
 - musimundo x
 - naldo x
 - megatone x
-- cetrogar
-- pardo
-- philco
-- liliana
-- peabody
-- samsung argentina
-- lg argentina
-- whirlpool
+- cetrogar x
+- pardo x
+- philco x
+- novogar x
+- samsung argentina x
+- whirlpool x
 - electrolux
-- mercado libre
 - compumundo
 - carrefour
 - jumbo

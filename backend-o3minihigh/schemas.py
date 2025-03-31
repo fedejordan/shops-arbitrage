@@ -4,8 +4,8 @@ from datetime import datetime
 class ProductBase(BaseModel):
     id: int
     title: str
-    original_price: str
-    final_price: str
+    original_price: float
+    final_price: float
     url: str
     image: str | None = None
     category: str

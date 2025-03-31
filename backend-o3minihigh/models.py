@@ -5,8 +5,8 @@ class Product(Base):
     __tablename__ = "products"
     id = Column(Integer, primary_key=True, index=True)
     title = Column(String, index=True)
-    original_price = Column(String)
-    final_price = Column(String)
+    original_price = Column(Float)
+    final_price = Column(Float)
     url = Column(String)
     image = Column(String, nullable=True)
     category = Column(String)  # Nota: la categoría se debe normalizar en el futuro
