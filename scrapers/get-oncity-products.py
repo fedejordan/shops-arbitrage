@@ -5,8 +5,18 @@ import time
 import psycopg2
 import os
 from dotenv import load_dotenv
+import logging
 import re
 
+# ─────────────────────────────────────────────────────────────
+# Configuración del log de errores
+logging.basicConfig(
+    filename='scraper_errors_oncity.log',
+    level=logging.ERROR,
+    format='%(asctime)s - %(levelname)s - %(message)s'
+)
+
+# ─────────────────────────────────────────────────────────────
 # Cargar variables desde .env
 load_dotenv()
 
@@ -27,7 +37,7 @@ options.add_argument("--no-sandbox")
 options.add_argument("--disable-dev-shm-usage")
 driver = webdriver.Chrome(options=options)
 
-# URL de la categoría de On City
+# URL de categorías
 category_urls = [
     "https://www.oncity.com/aire-libre",
     "https://www.oncity.com/audio-tv-y-video",
@@ -49,75 +59,101 @@ category_urls = [
     "https://www.oncity.com/Autos-y-Motos",
 ]
 
+# ─────────────────────────────────────────────────────────────
+# Insertar "OnCity" si no existe en la tabla retailers
+retailer_name = "OnCity"
+retailer_url = "https://www.oncity.com"
+
+cursor.execute("""
+    INSERT INTO retailers (name, url)
+    VALUES (%s, %s)
+    ON CONFLICT (url) DO NOTHING
+""", (retailer_name, retailer_url))
+
+cursor.execute("SELECT id FROM retailers WHERE url = %s", (retailer_url,))
+retailer_id = cursor.fetchone()[0]
+
+# ─────────────────────────────────────────────────────────────
+# Función para limpiar y convertir precios
+def parse_price(price_str):
+    if not price_str or price_str in ["N/A", ""]:
+        return None
+    try:
+        cleaned = re.sub(r"[^\d,\.]", "", price_str).replace(".", "").replace(",", ".")
+        return float(cleaned)
+    except Exception as e:
+        logging.error(f"⚠️ Error al convertir precio: {price_str} - {e}")
+        return None
+
+# ─────────────────────────────────────────────────────────────
 # Medir tiempo de inicio
 start_time = time.time()
 
 # Scrapeo
 for base_url in category_urls:
     page = 1
+    category = base_url.split("/")[-1]
     while True:
-        print(f"Scrapeando {base_url} - Página {page}...")
-        driver.get(f"{base_url}?page={page}")
-        time.sleep(3)  # Esperar a que cargue la página
-        
-        soup = BeautifulSoup(driver.page_source, "html.parser")
-        # Se busca el contenedor de cada producto usando el selector de On City
-        products = soup.select("div.vtex-search-result-3-x-galleryItem")
-        
-        # Si no se encuentran productos, finaliza el bucle para esta categoría
-        if not products:
-            print("No se encontraron productos en esta página. Finalizando la búsqueda de esta categoría.")
+        print(f"Scrapeando {category} - Página {page}...")
+        try:
+            driver.get(f"{base_url}?page={page}")
+            time.sleep(3)
+
+            soup = BeautifulSoup(driver.page_source, "html.parser")
+            products = soup.select("div.vtex-search-result-3-x-galleryItem")
+
+            if not products:
+                print(f"🚫 No se encontraron productos en {category} página {page}. Fin de categoría.")
+                break
+
+            for product in products:
+                try:
+                    title_tag = product.find("span", class_="vtex-product-summary-2-x-productBrand")
+                    title = title_tag.get_text(strip=True) if title_tag else "Sin título"
+
+                    final_price_container = product.find("span", class_="vtex-product-price-1-x-sellingPrice")
+                    final_price_str = final_price_container.get_text(strip=True) if final_price_container else ""
+                    final_price = parse_price(final_price_str)
+
+                    original_price_container = product.find("span", class_="vtex-product-price-1-x-listPrice")
+                    original_price_str = original_price_container.get_text(strip=True) if original_price_container else ""
+                    original_price = parse_price(original_price_str)
+
+                    a_tag = product.find("a", class_="vtex-product-summary-2-x-clearLink")
+                    link = "https://www.oncity.com" + a_tag["href"] if a_tag and "href" in a_tag.attrs else ""
+
+                    img_tag = product.find("img", class_="vtex-product-summary-2-x-imageNormal")
+                    image_url = img_tag["src"] if img_tag and "src" in img_tag.attrs else ""
+
+                    cursor.execute("""
+                        INSERT INTO products (title, original_price, final_price, url, image, category, retailer_id, added_date, updated_date)
+                        VALUES (%s, %s, %s, %s, %s, %s, %s, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+                        ON CONFLICT (url) DO UPDATE SET updated_date = CURRENT_TIMESTAMP
+                    """, (
+                        title,
+                        original_price,
+                        final_price,
+                        link,
+                        image_url,
+                        category,
+                        retailer_id
+                    ))
+
+                    print(f"✔ Producto: {title} | Final: {final_price} | Original: {original_price if original_price else 'N/A'}")
+                except Exception as e:
+                    logging.error(f"🛑 Error procesando producto en {category} página {page}: {e}")
+                    continue
+
+            conn.commit()
+            print(f"💾 Página {page} de {category} guardada.\n")
+            page += 1
+
+        except Exception as e:
+            logging.error(f"🔥 Error al cargar página {page} de {category}: {e}")
             break
 
-        for product in products:
-            try:
-                # Título: se toma el texto del span que contiene el nombre del producto
-                title_tag = product.find("span", class_="vtex-product-summary-2-x-productBrand")
-                title = title_tag.get_text(strip=True) if title_tag else "N/A"
-                
-                # Precio final: se busca el contenedor del precio de venta
-                final_price_container = product.find("span", class_="vtex-product-price-1-x-sellingPrice")
-                if final_price_container:
-                    # Se limpia el texto para obtener solo el precio (ejemplo: "299.999")
-                    final_price = final_price_container.get_text(strip=True).replace("$", "").replace("\xa0", "").replace(" ", "")
-                else:
-                    final_price = "N/A"
-                    
-                # Precio original: se busca el contenedor del precio anterior (si existe)
-                original_price_container = product.find("span", class_="vtex-product-price-1-x-listPrice")
-                if original_price_container:
-                    original_price = original_price_container.get_text(strip=True).replace("$", "").replace("\xa0", "").replace(" ", "")
-                else:
-                    original_price = "N/A"
-
-                # Link del producto: se obtiene a partir del <a> con la clase correspondiente
-                a_tag = product.find("a", class_="vtex-product-summary-2-x-clearLink")
-                link = "https://www.oncity.com" + a_tag["href"] if a_tag and "href" in a_tag.attrs else "N/A"
-                
-                # Imagen: se toma la primera imagen encontrada con la clase de la imagen principal
-                img_tag = product.find("img", class_="vtex-product-summary-2-x-imageNormal")
-                image_url = img_tag["src"] if img_tag and "src" in img_tag.attrs else ""
-                
-                # Categoría (derivada de la URL)
-                category = base_url.split("/")[-1]
-                
-                # Inserción en la base de datos
-                cursor.execute("""
-                    INSERT INTO products (title, original_price, final_price, url, image, category, added_date, updated_date)
-                    VALUES (%s, %s, %s, %s, %s, %s, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
-                    ON CONFLICT (url) DO UPDATE SET updated_date = CURRENT_TIMESTAMP
-                """, (title, original_price, final_price, link, image_url, category))
-                
-                print(f"Producto: {title} - Final: ${final_price} - Original: ${original_price}")
-            except Exception as e:
-                print("Error:", e)
-                continue
-
-        page += 1  # Pasar a la siguiente página
-
-# Cierre de Selenium y PostgreSQL
+# Cierre
 driver.quit()
-conn.commit()
 cursor.close()
 conn.close()
 
@@ -125,5 +161,5 @@ conn.close()
 end_time = time.time()
 elapsed_time = end_time - start_time
 
-print("\nScrapeo completo.")
-print(f"Tiempo total de scrapeo: {elapsed_time:.2f} segundos.")
+print(f"\n✅ Scrapeo completo.")
+print(f"⏱ Tiempo total: {elapsed_time:.2f} segundos.")
