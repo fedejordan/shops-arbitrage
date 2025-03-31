@@ -6,11 +6,12 @@ import psycopg2
 import os
 from dotenv import load_dotenv
 import logging
+import re
 
 # ─────────────────────────────────────────────────────────────
 # Configuración del log de errores
 logging.basicConfig(
-    filename='scraper_errors.log',
+    filename='scraper_errors_cetrogar.log',
     level=logging.ERROR,
     format='%(asctime)s - %(levelname)s - %(message)s'
 )
@@ -49,6 +50,33 @@ category_urls = [
     "https://www.cetrogar.com.ar/otras-categorias.html"
 ]
 
+# ─────────────────────────────────────────────────────────────
+# Insertar "Cetrogar" si no existe en la tabla retailers
+retailer_name = "Cetrogar"
+retailer_url = "https://www.cetrogar.com.ar"
+
+cursor.execute("""
+    INSERT INTO retailers (name, url)
+    VALUES (%s, %s)
+    ON CONFLICT (url) DO NOTHING
+""", (retailer_name, retailer_url))
+
+# Obtener su ID
+cursor.execute("SELECT id FROM retailers WHERE url = %s", (retailer_url,))
+retailer_id = cursor.fetchone()[0]
+
+
+# Función para limpiar y convertir precios
+def parse_price(price_str):
+    if not price_str:
+        return None
+    try:
+        cleaned = re.sub(r"[^\d,]", "", price_str).replace(".", "").replace(",", ".")
+        return float(cleaned)
+    except Exception as e:
+        logging.error(f"⚠️ Error al convertir precio: {price_str} - {e}")
+        return None
+
 # Medir tiempo de inicio
 start_time = time.time()
 
@@ -80,29 +108,33 @@ for base_url in category_urls:
                     image_url = img_tag["src"] if img_tag and img_tag.has_attr("src") else ""
 
                     price_box = product.find("div", class_="price-box price-final_price")
-                    original_price = ""
-                    final_price = ""
+                    original_price_str = ""
+                    final_price_str = ""
                     if price_box:
                         discount_span = price_box.find("span", class_="special-price")
                         if discount_span:
                             old_price_container = price_box.find("span", class_="old-price")
                             if old_price_container:
                                 original_price_elem = old_price_container.find("span", class_="price")
-                                original_price = original_price_elem.get_text(strip=True) if original_price_elem else ""
+                                original_price_str = original_price_elem.get_text(strip=True) if original_price_elem else ""
                             final_price_elem = discount_span.find("span", class_="price")
-                            final_price = final_price_elem.get_text(strip=True) if final_price_elem else ""
+                            final_price_str = final_price_elem.get_text(strip=True) if final_price_elem else ""
                         else:
                             final_price_elem = price_box.find("span", id=lambda x: x and x.startswith("product-price-"))
                             if not final_price_elem:
                                 price_spans = price_box.find_all("span", class_="price")
                                 if price_spans:
-                                    final_price = price_spans[-1].get_text(strip=True)
+                                    final_price_str = price_spans[-1].get_text(strip=True)
                             else:
-                                final_price = final_price_elem.get_text(strip=True)
+                                final_price_str = final_price_elem.get_text(strip=True)
+
+                    # 🔢 Convertir precios a float
+                    original_price = parse_price(original_price_str)
+                    final_price = parse_price(final_price_str)
 
                     cursor.execute("""
-                        INSERT INTO products (title, original_price, final_price, url, image, category, added_date, updated_date)
-                        VALUES (%s, %s, %s, %s, %s, %s, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+                        INSERT INTO products (title, original_price, final_price, url, image, category, retailer_id, added_date, updated_date)
+                        VALUES (%s, %s, %s, %s, %s, %s, %s, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
                         ON CONFLICT (url) DO UPDATE SET updated_date = CURRENT_TIMESTAMP
                     """, (
                         title,
@@ -110,8 +142,10 @@ for base_url in category_urls:
                         final_price,
                         link,
                         image_url,
-                        category
+                        category,
+                        retailer_id
                     ))
+
 
                     print(f"✔ Producto: {title} | Final: {final_price} | Original: {original_price if original_price else 'N/A'}")
                 except Exception as e:
