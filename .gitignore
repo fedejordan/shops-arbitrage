@@ -27,3 +27,4 @@
 
 **/__pycache__/**
 **.env.**
+scrapers/scraper_errors_*.log
