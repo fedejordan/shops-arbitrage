@@ -5,6 +5,7 @@ on:
 
 jobs:
   run-scrapers:
+    name: "Run scraper: ${{ matrix.scraper }}"
     runs-on: ubuntu-latest
     strategy:
       matrix:
@@ -21,8 +22,6 @@ jobs:
           - philco
           - fravega
           - whirlpool-argentina
-
-    name: Run scraper: ${{ matrix.scraper }}
 
     steps:
     - name: Checkout repo
