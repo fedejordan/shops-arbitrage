@@ -1,16 +1,22 @@
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
-from selenium.webdriver.common.by import By
-from selenium.webdriver.support.ui import WebDriverWait
-from selenium.webdriver.support import expected_conditions as EC
-from selenium.common.exceptions import TimeoutException, NoSuchElementException, StaleElementReferenceException
 from bs4 import BeautifulSoup
 import time
 import psycopg2
 import os
 from dotenv import load_dotenv
+import logging
 import re
 
+# ─────────────────────────────────────────────────────────────
+# Configuración del log de errores
+logging.basicConfig(
+    filename='scraper_errors_novogar.log',
+    level=logging.ERROR,
+    format='%(asctime)s - %(levelname)s - %(message)s'
+)
+
+# ─────────────────────────────────────────────────────────────
 # Cargar variables desde .env
 load_dotenv()
 
@@ -32,7 +38,52 @@ options.add_argument("--disable-dev-shm-usage")
 options.add_argument("--window-size=1920,1080")
 driver = webdriver.Chrome(options=options)
 
-# URL de las categorías de Novogar
+# ─────────────────────────────────────────────────────────────
+# Insertar "Novogar" si no existe en la tabla retailers
+retailer_name = "Novogar"
+retailer_url = "https://www.novogar.com.ar"
+
+cursor.execute("""
+    INSERT INTO retailers (name, url)
+    VALUES (%s, %s)
+    ON CONFLICT (url) DO NOTHING
+""", (retailer_name, retailer_url))
+conn.commit()
+
+cursor.execute("SELECT id FROM retailers WHERE url = %s", (retailer_url,))
+retailer_id = cursor.fetchone()[0]
+
+# ─────────────────────────────────────────────────────────────
+# Función para limpiar y convertir precios
+def parse_price(price_str):
+    if not price_str or price_str in ["N/A", ""]:
+        return None
+    try:
+        cleaned = re.sub(r"[^\d,]", "", price_str).replace(".", "").replace(",", ".")
+        return float(cleaned)
+    except Exception as e:
+        logging.error(f"⚠️ Error al convertir precio: {price_str} - {e}")
+        return None
+
+# ─────────────────────────────────────────────────────────────
+# Función para hacer scroll y cargar todos los productos
+def scroll_to_load_all_products(driver, max_scrolls=30):
+    last_height = driver.execute_script("return document.body.scrollHeight")
+    scroll_count = 0
+    while scroll_count < max_scrolls:
+        driver.execute_script("window.scrollTo(0, document.body.scrollHeight);")
+        time.sleep(2)
+        new_height = driver.execute_script("return document.body.scrollHeight")
+        if new_height == last_height:
+            time.sleep(3)
+            new_height = driver.execute_script("return document.body.scrollHeight")
+            if new_height == last_height:
+                break
+        last_height = new_height
+        scroll_count += 1
+
+# ─────────────────────────────────────────────────────────────
+# Categorías
 category_urls = [
     "https://www.novogar.com.ar/categorias/agua-caliente",
     "https://www.novogar.com.ar/categorias/aire-acondicionado",
@@ -57,141 +108,84 @@ category_urls = [
     "https://www.novogar.com.ar/categorias/telefonia",
     "https://www.novogar.com.ar/categorias/television-",
     "https://www.novogar.com.ar/categorias/ventilacion"
+
 ]
 
 # Medir tiempo de inicio
 start_time = time.time()
 
-# Función para hacer scroll hasta el final de la página y cargar todos los productos
-def scroll_to_load_all_products(driver, max_scrolls=30):
-    last_height = driver.execute_script("return document.body.scrollHeight")
-    products_count = 0
-    scroll_count = 0
-    
-    while scroll_count < max_scrolls:
-        # Obtener cantidad actual de productos
-        soup = BeautifulSoup(driver.page_source, "html.parser")
-        current_products = len(soup.select("div.one-product"))
-        
-        # Si encontramos nuevos productos, actualizar contador
-        if current_products > products_count:
-            products_count = current_products
-            print(f"Productos encontrados hasta ahora: {products_count}")
-        
-        # Scroll hacia abajo
-        driver.execute_script("window.scrollTo(0, document.body.scrollHeight);")
-        time.sleep(2)  # Esperar a que carguen los nuevos elementos
-        
-        # Calcular nueva altura
-        new_height = driver.execute_script("return document.body.scrollHeight")
-        
-        # Si la altura no cambia después de hacer scroll, hemos llegado al final
-        if new_height == last_height:
-            # Esperar un poco más para asegurarse de que no se cargan más productos
-            time.sleep(3)
-            new_height = driver.execute_script("return document.body.scrollHeight")
-            if new_height == last_height:
-                print("Llegamos al final de la página")
-                break
-        
-        last_height = new_height
-        scroll_count += 1
-    
-    return products_count
-
 # Scrapeo
 for base_url in category_urls:
-    print(f"\nScrapeando {base_url}...")
-    
+    category = base_url.split("/")[-1]
+    print(f"\nScrapeando {category}...")
+
     try:
-        # Cargar la página
         driver.get(base_url)
-        time.sleep(3)  # Esperar carga inicial
-        
-        # Hacer scroll para cargar todos los productos
-        total_products = scroll_to_load_all_products(driver)
-        print(f"Total de productos encontrados en {base_url}: {total_products}")
-        
-        # Obtener HTML final con todos los productos cargados
+        time.sleep(3)
+        scroll_to_load_all_products(driver)
         soup = BeautifulSoup(driver.page_source, "html.parser")
         products = soup.select("div.one-product")
-        
-        # Si no se encuentran productos, pasar a la siguiente categoría
+
         if not products:
-            print("No se encontraron productos en esta categoría.")
+            print("🚫 No se encontraron productos.")
             continue
-            
-        # Obtener categoría de la URL
-        category = base_url.split("/")[-1]
-        
-        # Procesar cada producto
+
         for product in products:
             try:
-                # Título del producto
                 title_tag = product.select_one("h3.product-card__name")
-                title = title_tag.get_text(strip=True) if title_tag else "N/A"
-                
-                # Link del producto
+                title = title_tag.get_text(strip=True) if title_tag else "Sin título"
+
                 a_tag = product.select_one("div.product-card a")
-                link = "https://www.novogar.com.ar" + a_tag["href"] if a_tag and "href" in a_tag.attrs else "N/A"
-                
-                # Precio final (con descuento si existe)
-                price_tag = product.select_one("p.frase_precio.cat-mobile-precioof")
-                if price_tag:
-                    final_price = price_tag.get_text(strip=True).replace("$", "").replace(".", "").strip()
-                else:
-                    # Buscar alternativa si no se encuentra el precio con clase cat-mobile-precioof
-                    price_tag = product.select_one("div.productCard_prices p.productCard_price_regular:not(:has(~ p.productCard_price_discount))")
-                    final_price = price_tag.get_text(strip=True).replace("$", "").replace(".", "").strip() if price_tag else "N/A"
-                
-                # Precio original (cuando hay descuento)
+                link = "https://www.novogar.com.ar" + a_tag["href"] if a_tag and "href" in a_tag.attrs else ""
+
+                price_tag = product.select_one("p.frase_precio.cat-mobile-precioof") or \
+                            product.select_one("div.productCard_prices p.productCard_price_regular")
+                final_price = parse_price(price_tag.get_text(strip=True)) if price_tag else None
+
                 original_price_tag = product.select_one("p.productCard_price_regular:has(~ p.productCard_price_discount)")
-                if original_price_tag:
-                    original_price = original_price_tag.get_text(strip=True).replace("$", "").replace(".", "").strip()
-                else:
-                    original_price = final_price  # Si no hay descuento, el precio original es igual al final
-                
-                # Imagen
-                img_tag = product.select_one("div.productCard_img img")
-                if img_tag and "src" in img_tag.attrs:
-                    image_url = img_tag["src"]
-                    # Añadir dominio si la URL es relativa
+                original_price = parse_price(original_price_tag.get_text(strip=True)) if original_price_tag else final_price
+
+                img_tags = product.select("div.productCard_img img")
+                if img_tags:
+                    image_url = img_tags[-1]["src"]
                     if image_url.startswith("/"):
                         image_url = "https://www.novogar.com.ar" + image_url
                 else:
                     image_url = ""
-                
-                # Inserción en la base de datos
+
+
                 cursor.execute("""
-                    INSERT INTO products (title, original_price, final_price, url, image, category, added_date, updated_date)
-                    VALUES (%s, %s, %s, %s, %s, %s, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+                    INSERT INTO products (title, original_price, final_price, url, image, category, retailer_id, added_date, updated_date)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
                     ON CONFLICT (url) DO UPDATE SET 
                         title = EXCLUDED.title,
                         original_price = EXCLUDED.original_price,
                         final_price = EXCLUDED.final_price,
                         image = EXCLUDED.image,
                         updated_date = CURRENT_TIMESTAMP
-                """, (title, original_price, final_price, link, image_url, category))
-                
-                print(f"Producto: {title} - Final: ${final_price} - Original: ${original_price}")
-            
+                """, (title, original_price, final_price, link, image_url, category, retailer_id))
+
+                print(f"✔ Producto: {title} | Final: {final_price} | Original: {original_price if original_price else 'N/A'}")
+
             except Exception as e:
-                print(f"Error procesando producto: {e}")
+                logging.error(f"🛑 Error procesando producto en {category}: {e}")
                 continue
-    
+
+        conn.commit()
+        print(f"💾 Categoría {category} guardada.\n")
+
     except Exception as e:
-        print(f"Error scrapeando categoría {base_url}: {e}")
+        logging.error(f"🔥 Error en categoría {category}: {e}")
         continue
 
-# Cierre de Selenium y PostgreSQL
+# Cierre
 driver.quit()
-conn.commit()
 cursor.close()
 conn.close()
 
-# Medir tiempo de fin
+# Tiempo total
 end_time = time.time()
 elapsed_time = end_time - start_time
 
-print("\nScrapeo completo.")
-print(f"Tiempo total de scrapeo: {elapsed_time:.2f} segundos.")
+print(f"\n✅ Scrapeo completo.")
+print(f"⏱ Tiempo total: {elapsed_time:.2f} segundos.")
