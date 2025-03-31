@@ -6,7 +6,18 @@ import time
 import psycopg2
 import os
 from dotenv import load_dotenv
+import logging
+import re
 
+# ─────────────────────────────────────────────────────────────
+# Configuración del log de errores
+logging.basicConfig(
+    filename='scraper_errors_samsung.log',
+    level=logging.ERROR,
+    format='%(asctime)s - %(levelname)s - %(message)s'
+)
+
+# ─────────────────────────────────────────────────────────────
 # Cargar variables de entorno desde .env
 load_dotenv()
 
@@ -20,6 +31,21 @@ conn = psycopg2.connect(
 )
 cursor = conn.cursor()
 
+# ─────────────────────────────────────────────────────────────
+# Insertar "Samsung Argentina" si no existe en la tabla retailers
+retailer_name = "Samsung Argentina"
+retailer_url = "https://www.samsung.com/ar"
+
+cursor.execute("""
+    INSERT INTO retailers (name, url)
+    VALUES (%s, %s)
+    ON CONFLICT (url) DO NOTHING
+""", (retailer_name, retailer_url))
+
+cursor.execute("SELECT id FROM retailers WHERE url = %s", (retailer_url,))
+retailer_id = cursor.fetchone()[0]
+
+# ─────────────────────────────────────────────────────────────
 # Configuración de Selenium
 options = Options()
 options.add_argument("--headless")
@@ -27,9 +53,10 @@ options.add_argument("--no-sandbox")
 options.add_argument("--disable-dev-shm-usage")
 driver = webdriver.Chrome(options=options)
 
-# Lista de URLs de categorías para Samsung Argentina
+# ─────────────────────────────────────────────────────────────
+# Lista de URLs de categorías
 category_urls = [
-    "https://www.samsung.com/ar/tvs/all-tvs/"
+    "https://www.samsung.com/ar/tvs/all-tvs/",
     "https://www.samsung.com/ar/audio-devices/all-audio-devices/",
     "https://www.samsung.com/ar/projectors/all-projectors/",
     "https://www.samsung.com/ar/refrigerators/all-refrigerators/",
@@ -42,86 +69,85 @@ category_urls = [
     "https://www.samsung.com/ar/monitors/all-monitors/",
     "https://www.samsung.com/ar/mobile-accessories/all-mobile-accessories/",
     "https://www.samsung.com/ar/smartphones/all-smartphones/",
-
 ]
 
+# ─────────────────────────────────────────────────────────────
+# Función para limpiar y convertir precios
+def parse_price(price_str):
+    if not price_str or price_str == "N/A":
+        return None
+    try:
+        cleaned = re.sub(r"[^\d,]", "", price_str).replace(".", "").replace(",", ".")
+        return float(cleaned)
+    except Exception as e:
+        logging.error(f"⚠️ Error al convertir precio: {price_str} - {e}")
+        return None
+
+# ─────────────────────────────────────────────────────────────
 # Medir tiempo de inicio
 start_time = time.time()
 
 # Scrapeo
 for base_url in category_urls:
-    print(f"Scrapeando la categoría: {base_url}")
+    print(f"Scrapeando categoría: {base_url}")
     driver.get(base_url)
-    time.sleep(3)  # Esperar a que cargue la página inicial
+    time.sleep(3)
 
-    # Clic en el botón "Ver más" hasta que no esté disponible
     while True:
         try:
             ver_mas_btn = driver.find_element(By.CSS_SELECTOR, "button.pd19-product-finder__view-more-btn")
             if ver_mas_btn.is_displayed():
-                print("Clic en 'Ver más' para cargar más productos...")
+                print("🔄 Clic en 'Ver más' para cargar más productos...")
                 driver.execute_script("arguments[0].click();", ver_mas_btn)
-                time.sleep(3)  # Esperar a que se carguen nuevos productos
+                time.sleep(3)
             else:
                 break
-        except Exception as e:
-            print("No se encontró el botón 'Ver más' o ya no está disponible:", e)
+        except Exception:
             break
 
-    # Obtener el HTML de la página con todos los productos cargados
     soup = BeautifulSoup(driver.page_source, "html.parser")
-    # Seleccionar todos los productos usando el contenedor de cada tarjeta
     products = soup.select("div.pd19-product-card__item")
-    print(f"Se encontraron {len(products)} productos en la categoría.")
+    print(f"🧾 Se encontraron {len(products)} productos.")
+
+    url_parts = base_url.rstrip("/").split("/")
+    category = url_parts[-1] if url_parts[-1] != "" else url_parts[-2]
 
     for product in products:
         try:
-            # Título: se extrae desde el <a> con la clase 'pd19-product-card__name'
             title_tag = product.find("a", class_="pd19-product-card__name")
-            title = title_tag.get_text(strip=True) if title_tag else "N/A"
+            title = title_tag.get_text(strip=True) if title_tag else "Sin título"
+            link = "https://www.samsung.com" + title_tag["href"] if title_tag and "href" in title_tag.attrs else ""
 
-            # Link del producto: se obtiene el atributo href y se antepone el dominio
-            if title_tag and "href" in title_tag.attrs:
-                link = "https://www.samsung.com" + title_tag["href"]
-            else:
-                link = "N/A"
-
-            # Precio final: se extrae el texto del <strong> con la clase 'pd19-product-card__current-price'
             price_tag = product.find("strong", class_="pd19-product-card__current-price")
-            final_price = price_tag.get_text(strip=True).replace("$", "").replace(".", "") if price_tag else "N/A"
+            final_price_str = price_tag.get_text(strip=True) if price_tag else ""
+            final_price = parse_price(final_price_str)
 
-            # Precio original: en este caso no se detecta, se asigna N/A (se puede adaptar si se encuentra el elemento)
-            original_price = "N/A"
+            original_price = None  # Samsung no muestra precio original en su web por ahora
 
-            # Imagen: se toma la primera imagen encontrada en el contenedor de imagenes
             img_tag = product.select_one("a.pd19-product-card__img img.image__main")
             image_url = img_tag["src"] if img_tag and "src" in img_tag.attrs else ""
 
-            # Categoría: se extrae a partir de la URL base (se toma el último segmento; si la URL termina en '/', se toma el penúltimo)
-            url_parts = base_url.rstrip("/").split("/")
-            category = url_parts[-1] if url_parts[-1] != "" else url_parts[-2]
-
-            # Inserción en la base de datos
             cursor.execute("""
-                INSERT INTO products (title, original_price, final_price, url, image, category, added_date, updated_date)
-                VALUES (%s, %s, %s, %s, %s, %s, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+                INSERT INTO products (title, original_price, final_price, url, image, category, retailer_id, added_date, updated_date)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
                 ON CONFLICT (url) DO UPDATE SET updated_date = CURRENT_TIMESTAMP
-            """, (title, original_price, final_price, link, image_url, category))
+            """, (title, original_price, final_price, link, image_url, category, retailer_id))
 
-            print(f"Producto: {title} - Final: ${final_price} - Original: ${original_price}")
+            conn.commit()
+            print(f"✔ Producto: {title} | Final: {final_price} | Link: {link}")
+
         except Exception as e:
-            print("Error al procesar un producto:", e)
+            logging.error(f"🛑 Error procesando producto en {category}: {e}")
             continue
 
-# Cierre de Selenium y PostgreSQL
+# ─────────────────────────────────────────────────────────────
+# Cierre
 driver.quit()
-conn.commit()
 cursor.close()
 conn.close()
 
-# Medir tiempo de fin
 end_time = time.time()
 elapsed_time = end_time - start_time
 
-print("\nScrapeo completo.")
-print(f"Tiempo total de scrapeo: {elapsed_time:.2f} segundos.")
+print("\n✅ Scrapeo completo.")
+print(f"⏱ Tiempo total: {elapsed_time:.2f} segundos.")
