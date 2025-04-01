@@ -63,7 +63,7 @@ def parse_price(price_str):
 
 # URLs de las categorías
 category_urls = [
-    # "https://www.garbarino.com/celulares-notebooks-y-tecnologia",
+    "https://www.garbarino.com/celulares-notebooks-y-tecnologia",
     "https://www.garbarino.com/smart-tv-audio-y-video",
     "https://www.garbarino.com/electrodomesticos",
     "https://www.garbarino.com/salud-y-belleza",
