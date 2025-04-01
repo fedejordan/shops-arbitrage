@@ -1,5 +1,9 @@
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
+from selenium.webdriver.chrome.service import Service
+from selenium.webdriver.common.by import By
+from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.support import expected_conditions as EC
 from bs4 import BeautifulSoup
 import time
 import psycopg2
@@ -9,18 +13,14 @@ import logging
 import re
 
 # ─────────────────────────────────────────────────────────────
-# Configuración del log de errores
 logging.basicConfig(
     filename='scraper_errors_fravega.log',
     level=logging.ERROR,
     format='%(asctime)s - %(levelname)s - %(message)s'
 )
 
-# ─────────────────────────────────────────────────────────────
-# Cargar variables desde .env
 load_dotenv()
 
-# Conexión a PostgreSQL
 conn = psycopg2.connect(
     dbname=os.getenv("DBNAME"),
     user=os.getenv("DBUSER"),
@@ -30,15 +30,15 @@ conn = psycopg2.connect(
 )
 cursor = conn.cursor()
 
-# Configuración de Selenium
+# Configuración Selenium con user-agent
 options = Options()
 options.add_argument("--headless")
 options.add_argument("--no-sandbox")
 options.add_argument("--disable-dev-shm-usage")
+options.add_argument("user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36")
 driver = webdriver.Chrome(options=options)
 
 # ─────────────────────────────────────────────────────────────
-# Insertar "Frávega" si no existe en la tabla retailers
 retailer_name = "Fravega"
 retailer_url = "https://www.fravega.com"
 
@@ -51,8 +51,6 @@ cursor.execute("""
 cursor.execute("SELECT id FROM retailers WHERE url = %s", (retailer_url,))
 retailer_id = cursor.fetchone()[0]
 
-# ─────────────────────────────────────────────────────────────
-# URLs de las categorías
 category_urls = [
     "https://www.fravega.com/l/articulos-de-libreria-y-papeleria/",
     "https://www.fravega.com/l/audio/",
@@ -102,8 +100,6 @@ category_urls = [
     "https://www.fravega.com/l/videojuegos/",
 ]
 
-# ─────────────────────────────────────────────────────────────
-# Función para limpiar y convertir precios
 def parse_price(price_str):
     if not price_str:
         return None
@@ -114,21 +110,39 @@ def parse_price(price_str):
         logging.error(f"⚠️ Error al convertir precio: {price_str} - {e}")
         return None
 
-# Medir tiempo de inicio
 start_time = time.time()
 
-# Scrapeo
 for base_url in category_urls:
     page = 1
-    category = base_url.split("/l/")[-1]
+    category = base_url.split("/l/")[-1].strip("/")
     while True:
         print(f"Scrapeando {category} - Página {page}...")
         try:
-            driver.get(f"{base_url}/?page={page}")
-            time.sleep(3)
+            full_url = f"{base_url}?page={page}"
+            retries = 3
+            articles = []
 
-            soup = BeautifulSoup(driver.page_source, "html.parser")
-            articles = soup.find_all("article", {"data-test-id": "result-item"})
+            while retries > 0:
+                driver.get(full_url)
+                try:
+                    WebDriverWait(driver, 10).until(
+                        EC.presence_of_element_located((By.CSS_SELECTOR, "article[data-test-id='result-item']"))
+                    )
+                except:
+                    logging.warning(f"⏳ Timeout esperando artículos en {category} página {page}...")
+
+                soup = BeautifulSoup(driver.page_source, "html.parser")
+                articles = soup.find_all("article", {"data-test-id": "result-item"})
+
+                if articles:
+                    break
+                else:
+                    retries -= 1
+                    if retries == 0:
+                        print(driver.page_source[:500])
+                        print(f"🚫 No se encontraron productos en {category} página {page}. Fin de categoría.")
+                        break
+                    print(f"🔁 Reintentando página {page} de {category}...")
 
             if not articles:
                 print(f"🚫 No se encontraron productos en {category} página {page}. Fin de categoría.")
@@ -179,12 +193,10 @@ for base_url in category_urls:
             logging.error(f"🔥 Error al cargar página {page} de {category}: {e}")
             break
 
-# Cierre de Selenium y PostgreSQL
 driver.quit()
 cursor.close()
 conn.close()
 
-# Medir tiempo de fin
 end_time = time.time()
 elapsed_time = end_time - start_time
 

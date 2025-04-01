@@ -1,0 +1,56 @@
+name: Run Fravega Scraper
+
+on:
+  workflow_dispatch:
+
+jobs:
+  run-scrapers:
+    name: "Run scraper: ${{ matrix.scraper }}"
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        scraper:
+          - fravega
+
+    steps:
+    - name: Checkout repo
+      uses: actions/checkout@v3
+
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: 3.13
+
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install selenium psycopg2-binary beautifulsoup4 python-dotenv
+
+    - name: Setup Chrome
+      uses: browser-actions/setup-chrome@latest
+      with:
+        chrome-version: stable
+
+    - name: Set CHROME environment variables
+      run: |
+        echo "CHROME_BIN=$(which google-chrome)" >> $GITHUB_ENV
+        echo "PATH=$PATH:/usr/bin/google-chrome" >> $GITHUB_ENV
+
+    - name: Run scraper script
+      env:
+        DBNAME: ${{ secrets.DBNAME }}
+        DBUSER: ${{ secrets.DBUSER }}
+        DBPASSWORD: ${{ secrets.DBPASSWORD }}
+        DBHOST: ${{ secrets.DBHOST }}
+        DBPORT: ${{ secrets.DBPORT }}
+      run: |
+        cd scrapers
+        python get-${{ matrix.scraper }}-products.py || echo "Script failed with exit code $?"
+
+    - name: Upload error log if it exists
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: scraper-errors-${{ matrix.scraper }}
+        path: scrapers/scraper_errors_${{ matrix.scraper }}.log
+        if-no-files-found: ignore
