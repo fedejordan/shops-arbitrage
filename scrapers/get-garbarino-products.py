@@ -85,8 +85,10 @@ start_time = time.time()
 for base_url in category_urls:
     page = 1
     category = base_url.split("/")[-1]
+    last_product_urls = set()
     while True:
         print(f"Scrapeando {category} - Página {page}...")
+        current_product_urls = set()
         try:
             driver.get(f"{base_url}?page={page}")
             time.sleep(3)  # Esperar a que cargue la página
@@ -139,7 +141,8 @@ for base_url in category_urls:
                     # Buscar el enlace del producto
                     link_tag = product.find("a", class_=lambda x: x and "card-anchor" in x)
                     link = retailer_url + link_tag["href"] if link_tag and "href" in link_tag.attrs else ""
-                    
+                    current_product_urls.add(link)
+
                     # Buscar la imagen del producto
                     img_tag = product.find("img", class_="ratio-image__image")
                     image_url = img_tag["src"] if img_tag and "src" in img_tag.attrs else ""
@@ -184,9 +187,16 @@ for base_url in category_urls:
                     logging.error(f"🛑 Error procesando producto en {category} página {page}: {e}")
                     continue
 
+            # 🛑 DETECCIÓN DE LOOP INFINITO
+            if current_product_urls == last_product_urls:
+                print(f"🌀 Página {page} de {category} repite los mismos productos. Finalizando categoría.\n")
+                break
+
             conn.commit()
             print(f"💾 Página {page} de {category} guardada.\n")
             page += 1
+
+            last_product_urls = current_product_urls
 
         except Exception as e:
             logging.error(f"🔥 Error al cargar página {page} de {category}: {e}")
