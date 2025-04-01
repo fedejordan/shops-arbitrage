@@ -11,6 +11,7 @@ import os
 from dotenv import load_dotenv
 import logging
 import re
+from datetime import datetime
 
 # ─────────────────────────────────────────────────────────────
 logging.basicConfig(
@@ -116,7 +117,7 @@ for base_url in category_urls:
     page = 1
     category = base_url.split("/l/")[-1].strip("/")
     while True:
-        print(f"Scrapeando {category} - Página {page}...")
+        print(f"[{datetime.now().isoformat()}] Scrapeando {category} - Página {page}...")
         try:
             full_url = f"{base_url}?page={page}"
             retries = 3
