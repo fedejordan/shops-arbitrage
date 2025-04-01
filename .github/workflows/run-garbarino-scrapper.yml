@@ -1,4 +1,4 @@
-name: Run All Scrapers Separately
+name: Run Garbarino Scraper
 
 on:
   workflow_dispatch:
