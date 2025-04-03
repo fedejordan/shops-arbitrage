@@ -5,12 +5,13 @@ on:
 
 jobs:
   run-scrapers:
-    name: "Run scraper: ${{ matrix.scraper }}"
+    name: "Run Fravega scraper - ${{ matrix.part }}"
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        scraper:
-          - fravega
+        part:
+          - part1
+          - part2
 
     steps:
     - name: Checkout repo
@@ -45,12 +46,18 @@ jobs:
         DBPORT: ${{ secrets.DBPORT }}
       run: |
         cd scrapers
-        python get-${{ matrix.scraper }}-products.py || echo "Script failed with exit code $?"
+        if [ "${{ matrix.part }}" = "part1" ]; then
+          echo "Ejecutando parte 1 (hasta indumentaria)"
+          python get-fravega-products-part1.py || echo "Script failed with exit code $?"
+        else
+          echo "Ejecutando parte 2 (el resto de categorías)"
+          python get-fravega-products-part2.py || echo "Script failed with exit code $?"
+        fi
 
     - name: Upload error log if it exists
       if: always()
       uses: actions/upload-artifact@v4
       with:
-        name: scraper-errors-${{ matrix.scraper }}
-        path: scrapers/scraper_errors_${{ matrix.scraper }}.log
+        name: scraper-errors-fravega-${{ matrix.part }}
+        path: scrapers/scraper_errors_fravega-${{ matrix.part }}.log
         if-no-files-found: ignore
