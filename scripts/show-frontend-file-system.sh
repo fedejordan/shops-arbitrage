@@ -1,0 +1,1 @@
+tree -I "node_modules|.next|.git|public|coverage|dist|out" -L 3

@@ -1,0 +1,1 @@
+pg_dump -s -h localhost -U postgres -d shops_arbitrage > schema.sql
