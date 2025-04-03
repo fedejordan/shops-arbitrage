@@ -1,6 +1,7 @@
 from fastapi import FastAPI, Depends
 from sqlalchemy.orm import Session
 from database import SessionLocal, engine, Base
+from models import Base, Category, RetailerCategory
 import models
 import schemas
 from typing import List
@@ -42,4 +43,27 @@ def read_products(query: str = "", db: Session = Depends(get_db)):
 def ping():
     return {"status": "ok"}
 
+@app.get("/categories/", response_model=list[schemas.Category])
+def get_categories(db: Session = Depends(get_db)):
+    return db.query(Category).all()
 
+@app.post("/categories/", response_model=schemas.Category)
+def create_category(category: schemas.CategoryCreate, db: Session = Depends(get_db)):
+    db_category = Category(name=category.name)
+    db.add(db_category)
+    db.commit()
+    db.refresh(db_category)
+    return db_category
+
+@app.get("/retailer-categories/unmapped", response_model=list[schemas.RetailerCategory])
+def get_unmapped_retailer_categories(db: Session = Depends(get_db)):
+    return db.query(RetailerCategory).filter(RetailerCategory.category_id == None).all()
+
+@app.patch("/retailer-categories/{rc_id}/map")
+def map_retailer_category(rc_id: int, category_id: int, db: Session = Depends(get_db)):
+    rc = db.query(RetailerCategory).filter(RetailerCategory.id == rc_id).first()
+    if not rc:
+        raise HTTPException(status_code=404, detail="Retailer category not found")
+    rc.category_id = category_id
+    db.commit()
+    return {"message": "Mapped successfully"}

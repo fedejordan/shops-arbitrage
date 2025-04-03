@@ -17,9 +17,23 @@ class Product(Base):
     retailer_id = Column(Integer, ForeignKey("retailers.id"))  # 🔑 clave foránea
     retailer = relationship("Retailer")
 
-
 class Retailer(Base):
     __tablename__ = "retailers"
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String, index=True)
     url = Column(String)
+
+class Category(Base):
+    __tablename__ = 'categories'
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String, unique=True, nullable=False)
+
+class RetailerCategory(Base):
+    __tablename__ = 'retailer_categories'
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String, nullable=False)
+    retailer_id = Column(Integer, ForeignKey('retailers.id'), nullable=False)
+    category_id = Column(Integer, ForeignKey('categories.id'), nullable=True)
+
+    retailer = relationship("Retailer")
+    category = relationship("Category")

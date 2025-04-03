@@ -23,4 +23,23 @@ class ProductBase(BaseModel):
     class Config:
         from_attributes = True
 
+class CategoryBase(BaseModel):
+    name: str
 
+class CategoryCreate(CategoryBase):
+    pass
+
+class Category(CategoryBase):
+    id: int
+    class Config:
+        orm_mode = True
+
+class RetailerCategoryBase(BaseModel):
+    name: str
+    retailer_id: int
+    category_id: Optional[int]
+
+class RetailerCategory(RetailerCategoryBase):
+    id: int
+    class Config:
+        orm_mode = True
