@@ -1,4 +1,4 @@
-from fastapi import FastAPI, Depends
+from fastapi import FastAPI, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 from database import SessionLocal, engine, Base
 from models import Base, Category, RetailerCategory
@@ -6,6 +6,12 @@ import models
 import schemas
 from typing import List
 from fastapi.middleware.cors import CORSMiddleware
+import os
+import httpx
+from fastapi import HTTPException
+from dotenv import load_dotenv
+
+load_dotenv()
 
 app = FastAPI()
 
@@ -75,3 +81,84 @@ def map_retailer_category(rc_id: int, category_id: int, db: Session = Depends(ge
     rc.category_id = category_id
     db.commit()
     return {"message": "Mapped successfully"}
+
+@app.get("/products/uncategorized", response_model=List[schemas.ProductBase])
+def get_uncategorized_products(
+    db: Session = Depends(get_db),
+    offset: int = Query(0, ge=0),
+    limit: int = Query(50, ge=1, le=200)
+):
+    return (
+        db.query(models.Product)
+        .filter(models.Product.category_id == None)
+        .order_by(models.Product.id.desc())
+        .offset(offset)
+        .limit(limit)
+        .all()
+    )
+
+@app.get("/products/uncategorized/count")
+def get_uncategorized_count(db: Session = Depends(get_db)):
+    count = db.query(models.Product).filter(models.Product.category_id == None).count()
+    return {"count": count}
+
+@app.patch("/products/{product_id}/assign-category")
+def assign_product_category(product_id: int, category_id: int, db: Session = Depends(get_db)):
+    product = db.query(models.Product).filter(models.Product.id == product_id).first()
+    if not product:
+        raise HTTPException(status_code=404, detail="Product not found")
+    product.category_id = category_id
+    db.commit()
+    return {"message": "Category assigned successfully"}
+
+@app.post("/products/{product_id}/suggest-category")
+def suggest_category(product_id: int, db: Session = Depends(get_db)):
+    product = db.query(models.Product).filter(models.Product.id == product_id).first()
+    if not product:
+        raise HTTPException(status_code=404, detail="Product not found")
+
+    categories = db.query(models.Category).all()
+    category_names = [c.name for c in categories]
+
+    prompt = (
+        f"Dado el siguiente producto:\n\n"
+        f"Título: {product.title}\n"
+        f"Categorías disponibles: {', '.join(category_names)}\n\n"
+        f"¿A cuál de estas categorías pertenece mejor este producto? Respondé solo con el nombre exacto de la categoría."
+    )
+
+    deepseek_api_key = os.getenv("DEEPSEEK_API_KEY")
+    if not deepseek_api_key:
+        raise HTTPException(status_code=500, detail="DEEPSEEK_API_KEY not set")
+
+    try:
+        response = httpx.post(
+            "https://api.deepseek.com/v1/chat/completions",
+            headers={
+                "Authorization": f"Bearer {deepseek_api_key}",
+                "Content-Type": "application/json"
+            },
+            json={
+                "model": "deepseek-chat",
+                "messages": [
+                    {"role": "system", "content": "Sos un clasificador de productos."},
+                    {"role": "user", "content": prompt}
+                ],
+                "temperature": 0.2
+            },
+            timeout=15.0
+        )
+        response.raise_for_status()
+        result = response.json()
+        answer = result["choices"][0]["message"]["content"].strip()
+
+    except Exception as e:
+        print("Error al consultar DeepSeek:", e)
+        raise HTTPException(status_code=500, detail="Error al consultar DeepSeek")
+
+    matched_category = next((c for c in categories if c.name.lower() == answer.lower()), None)
+
+    if matched_category:
+        return {"suggested_category_id": matched_category.id}
+    else:
+        return {"suggested_category_id": None, "suggested_category_name": answer}

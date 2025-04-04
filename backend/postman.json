@@ -1,0 +1,144 @@
+{
+    "info": {
+      "_postman_id": "12345678-1234-1234-1234-123456789abc",
+      "name": "Shops Arbitrage API",
+      "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+    },
+    "item": [
+      {
+        "name": "Ping",
+        "request": {
+          "method": "GET",
+          "header": [],
+          "url": {
+            "raw": "{{base_url}}/ping",
+            "host": ["{{base_url}}"],
+            "path": ["ping"]
+          }
+        }
+      },
+      {
+        "name": "Get Products",
+        "request": {
+          "method": "GET",
+          "header": [],
+          "url": {
+            "raw": "{{base_url}}/products?query=",
+            "host": ["{{base_url}}"],
+            "path": ["products"],
+            "query": [
+              {
+                "key": "query",
+                "value": ""
+              }
+            ]
+          }
+        }
+      },
+      {
+        "name": "Get Categories",
+        "request": {
+          "method": "GET",
+          "header": [],
+          "url": {
+            "raw": "{{base_url}}/categories/",
+            "host": ["{{base_url}}"],
+            "path": ["categories", ""]
+          }
+        }
+      },
+      {
+        "name": "Create Category",
+        "request": {
+          "method": "POST",
+          "header": [
+            {
+              "key": "Content-Type",
+              "value": "application/json"
+            }
+          ],
+          "body": {
+            "mode": "raw",
+            "raw": "{\n  \"name\": \"New Category\"\n}"
+          },
+          "url": {
+            "raw": "{{base_url}}/categories/",
+            "host": ["{{base_url}}"],
+            "path": ["categories", ""]
+          }
+        }
+      },
+      {
+        "name": "Get Unmapped Retailer Categories",
+        "request": {
+          "method": "GET",
+          "header": [],
+          "url": {
+            "raw": "{{base_url}}/retailer-categories/unmapped",
+            "host": ["{{base_url}}"],
+            "path": ["retailer-categories", "unmapped"]
+          }
+        }
+      },
+      {
+        "name": "Map Retailer Category",
+        "request": {
+          "method": "PATCH",
+          "header": [
+            {
+              "key": "Content-Type",
+              "value": "application/json"
+            }
+          ],
+          "body": {
+            "mode": "raw",
+            "raw": "{\n  \"category_id\": 1\n}"
+          },
+          "url": {
+            "raw": "{{base_url}}/retailer-categories/:rc_id/map",
+            "host": ["{{base_url}}"],
+            "path": ["retailer-categories", ":rc_id", "map"]
+          }
+        }
+      },
+      {
+        "name": "Get Uncategorized Products",
+        "request": {
+          "method": "GET",
+          "header": [],
+          "url": {
+            "raw": "{{base_url}}/products/uncategorized",
+            "host": ["{{base_url}}"],
+            "path": ["products", "uncategorized"]
+          }
+        }
+      },
+      {
+        "name": "Assign Product Category",
+        "request": {
+          "method": "PATCH",
+          "header": [
+            {
+              "key": "Content-Type",
+              "value": "application/json"
+            }
+          ],
+          "body": {
+            "mode": "raw",
+            "raw": "{\n  \"category_id\": 1\n}"
+          },
+          "url": {
+            "raw": "{{base_url}}/products/:product_id/assign-category",
+            "host": ["{{base_url}}"],
+            "path": ["products", ":product_id", "assign-category"]
+          }
+        }
+      }
+    ],
+    "variable": [
+      {
+        "key": "base_url",
+        "value": "http://localhost:8000"
+      }
+    ]
+  }

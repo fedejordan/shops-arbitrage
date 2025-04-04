@@ -1,0 +1,30 @@
+name: Autosuggest Categorías
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '0 5 * * *'  # todos los días a las 5 AM UTC
+
+jobs:
+  autosuggest:
+    runs-on: ubuntu-latest
+    env:
+      DEEPSEEK_API_KEY: ${{ secrets.DEEPSEEK_API_KEY }}
+    steps:
+      - uses: actions/checkout@v3
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+      - name: Install deps
+        run: |
+          pip install -r requirements.txt
+      - name: Run autosuggest
+        run: |
+          cd backend
+          python autosuggest.py
+      - name: Upload informe
+        uses: actions/upload-artifact@v3
+        with:
+          name: informe-deepseek
+          path: deepseek_suggestions_report.md
