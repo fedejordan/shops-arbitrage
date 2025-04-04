@@ -8,7 +8,7 @@ from dotenv import load_dotenv
 load_dotenv()
 deepseek_key = os.getenv("DEEPSEEK_API_KEY")
 
-BATCH_SIZE = 50
+BATCH_SIZE = 20
 
 def get_uncategorized_products(session: Session):
     return (
