@@ -46,7 +46,7 @@ Devolvé un JSON con: [{{"title": "...", "categoria": "..."}}]"""
             ],
             "temperature": 0.2
         },
-        timeout=30
+        timeout=60
     )
     res.raise_for_status()
     return res.json()["choices"][0]["message"]["content"]
