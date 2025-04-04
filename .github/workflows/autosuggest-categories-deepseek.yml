@@ -24,8 +24,9 @@ jobs:
         run: |
           cd backend
           python autosuggest-product-categories.py
-      - name: Upload informe
+      - name: Upload informe resumen
         uses: actions/upload-artifact@v4
         with:
-          name: informe-deepseek
-          path: backend/deepseek_suggestions_report.md
+          name: resumen-sugerencias-deepseek
+          path: deepseek_suggestions_summary.md
+        

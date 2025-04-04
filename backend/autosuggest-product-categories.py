@@ -4,6 +4,9 @@ from sqlalchemy.orm import Session
 from database import SessionLocal
 from models import Product, Category
 from dotenv import load_dotenv
+import json
+import re
+import time
 
 load_dotenv()
 deepseek_key = os.getenv("DEEPSEEK_API_KEY")
@@ -54,51 +57,74 @@ Devolvé un JSON con: [{{"title": "...", "categoria": "..."}}]"""
 def main():
     session = SessionLocal()
     try:
-        products = get_uncategorized_products(session)
         categories = get_categories(session)
         category_map = {c.name.lower(): c.id for c in categories}
+        total_applied = 0
+        batch_num = 1
+        summary_log = []
 
-        titles = [p.title for p in products]
-        suggestions_raw = ask_deepseek(titles, list(category_map.keys()))
+        while True:
+            print(f"\n🚀 Procesando batch #{batch_num}...")
+            products = get_uncategorized_products(session)
+            if not products:
+                print("✅ No quedan más productos sin categorizar.")
+                break
 
-        import json
-        import re
+            titles = [p.title for p in products]
 
-        # 1. Log raw content (opcional pero recomendable)
-        print("🔍 Respuesta raw de DeepSeek:")
-        print(suggestions_raw)
+            try:
+                suggestions_raw = ask_deepseek(titles, list(category_map.keys()))
+            except Exception as e:
+                print(f"❌ Error en batch #{batch_num}: {e}")
+                break
 
-        # 2. Intentar extraer JSON entre corchetes
-        json_match = re.search(r"\[\s*{.*}\s*]", suggestions_raw, re.DOTALL)
+            print("🔍 Respuesta raw:")
+            print(suggestions_raw)
 
-        if not json_match:
-            raise Exception("❌ No se encontró una estructura JSON válida en la respuesta de DeepSeek")
+            json_match = re.search(r"\[\s*{.*}\s*]", suggestions_raw, re.DOTALL)
+            if not json_match:
+                print("❌ No se encontró JSON válido en la respuesta. Saltando batch.")
+                break
 
-        try:
-            suggestions = json.loads(json_match.group(0))
-        except json.JSONDecodeError as e:
-            print("❗ Error al parsear JSON extraído:")
-            print(json_match.group(0))
-            raise e
+            try:
+                suggestions = json.loads(json_match.group(0))
+            except json.JSONDecodeError as e:
+                print("❗ Error al parsear JSON:")
+                print(json_match.group(0))
+                raise e
 
+            applied = []
+            for suggestion in suggestions:
+                title = suggestion["title"]
+                cat_name = suggestion["categoria"].lower()
+                product = next((p for p in products if p.title == title), None)
+                if product and cat_name in category_map:
+                    product.category_id = category_map[cat_name]
+                    print(f"✔️ {title} → {cat_name}")
+                    applied.append((product.title, cat_name))
 
-        applied = []
-        for suggestion in suggestions:
-            title = suggestion["title"]
-            cat_name = suggestion["categoria"].lower()
-            product = next((p for p in products if p.title == title), None)
-            if product and cat_name in category_map:
-                product.category_id = category_map[cat_name]
-                print(f"Aplicando sugerencia: {title} → {cat_name}")
-                applied.append((product.title, cat_name))
-        session.commit()
+            session.commit()
+            total_applied += len(applied)
 
-        with open("deepseek_suggestions_report.md", "w") as f:
-            f.write("# Sugerencias aplicadas por DeepSeek\n\n")
-            for title, cat in applied:
-                f.write(f"- `{title}` → **{cat}**\n")
+            batch_log = [f"- `{title}` → **{cat}**" for title, cat in applied]
+            summary_log.append(f"# Batch #{batch_num}\n\n" + "\n".join(batch_log))
 
-        print(f"{len(applied)} sugerencias aplicadas.")
+            # with open(f"deepseek_batch_{batch_num}.md", "w") as f:
+            #     f.write(f"# Sugerencias aplicadas - Batch #{batch_num}\n\n")
+            #     f.write("\n".join(batch_log))
+
+            print(f"✅ Batch #{batch_num} completo: {len(applied)} sugerencias aplicadas.")
+            batch_num += 1
+            time.sleep(2)
+
+        # 🔽 Crear resumen final
+        with open("deepseek_suggestions_summary.md", "w") as f:
+            f.write("# Resumen total de sugerencias aplicadas por DeepSeek\n\n")
+            f.write("\n\n".join(summary_log))
+
+        print(f"\n🎉 Proceso finalizado. Total de productos categorizados: {total_applied}")
+        print("📄 Resumen generado en: deepseek_suggestions_summary.md")
+
     finally:
         session.close()
 
