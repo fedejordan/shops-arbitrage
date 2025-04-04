@@ -24,7 +24,7 @@ jobs:
           cd backend
           python autosuggest.py
       - name: Upload informe
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: informe-deepseek
           path: deepseek_suggestions_report.md
