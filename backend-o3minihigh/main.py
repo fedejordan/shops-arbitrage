@@ -37,6 +37,14 @@ def read_products(query: str = "", db: Session = Depends(get_db)):
         products = db.query(models.Product).filter(models.Product.title.ilike(f"%{query}%")).all()
     else:
         products = db.query(models.Product).all()
+    
+    # Agregamos el nombre de la categoría manualmente
+    # for product in products:
+    #     if product.category_rel:
+    #         product.category_name = product.category_rel.name  # esto funciona si lo seteaste como propiedad
+    #     else:
+    #         product.category_name = None
+
     return products
 
 @app.get("/ping")

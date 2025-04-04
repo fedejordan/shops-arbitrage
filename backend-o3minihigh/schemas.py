@@ -15,10 +15,12 @@ class ProductBase(BaseModel):
     final_price: Optional[float]
     url: str
     image: str | None = None
-    category: str
+    retail_category: str
     added_date: datetime
     updated_date: datetime
     retailer: RetailerBase
+    category_id: Optional[int]
+    category_name: Optional[str] = None
 
     class Config:
         from_attributes = True

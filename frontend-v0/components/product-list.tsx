@@ -33,7 +33,7 @@ export function ProductList({ products }: { products: Product[] }) {
                 <div>
                   <h3 className="font-medium line-clamp-2 mb-1">{product.title}</h3>
                   <div className="flex flex-wrap gap-2 mb-2">
-                    <Badge variant="outline">{product.category || "Sin categoría"}</Badge>
+                    <Badge variant="outline">{product.category_name || "Sin categoría"}</Badge>
                     {product.retailer?.name && (
                       <Badge variant="secondary" className="text-xs">
                         {product.retailer.name}

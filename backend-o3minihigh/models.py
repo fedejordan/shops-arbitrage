@@ -10,12 +10,19 @@ class Product(Base):
     final_price = Column(Float)
     url = Column(String)
     image = Column(String, nullable=True)
-    category = Column(String)  # Nota: la categoría se debe normalizar en el futuro
+    retail_category = Column(String)  # Nota: la categoría se debe normalizar en el futuro
     added_date = Column(DateTime)
     updated_date = Column(DateTime)
-    retailer = Column(String, index=True) 
-    retailer_id = Column(Integer, ForeignKey("retailers.id"))  # 🔑 clave foránea
+    retailer = Column(String, index=True)  # opcional, si querés guardar redundancia textual
+    retailer_id = Column(Integer, ForeignKey("retailers.id"))
     retailer = relationship("Retailer")
+    category_id = Column(Integer, ForeignKey("categories.id"), nullable=True)
+    category_rel = relationship("Category", backref="products")
+
+    @property
+    def category_name(self):
+        return self.category_rel.name if self.category_rel else None
+
 
 class Retailer(Base):
     __tablename__ = "retailers"
