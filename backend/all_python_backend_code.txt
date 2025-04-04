@@ -1,0 +1,101 @@
+
+// --- FILE: ./models.py ---
+from sqlalchemy import Column, Integer, String, Float, DateTime
+from database import Base
+
+class Product(Base):
+    __tablename__ = "products"
+    id = Column(Integer, primary_key=True, index=True)
+    title = Column(String, index=True)
+    original_price = Column(Float)
+    final_price = Column(Float)
+    url = Column(String)
+    image = Column(String, nullable=True)
+    category = Column(String)  # Nota: la categoría se debe normalizar en el futuro
+    added_date = Column(DateTime)
+    updated_date = Column(DateTime)
+-e 
+
+// --- FILE: ./database.py ---
+from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker, declarative_base
+import os
+from dotenv import load_dotenv
+
+load_dotenv()
+
+SQLALCHEMY_DATABASE_URL = os.getenv("DATABASE_URL")  # Cambia esta URL según tu configuración
+engine = create_engine(SQLALCHEMY_DATABASE_URL)
+
+SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+Base = declarative_base()
+-e 
+
+// --- FILE: ./schemas.py ---
+from pydantic import BaseModel
+from datetime import datetime
+from typing import Optional
+
+class ProductBase(BaseModel):
+    id: int
+    title: str
+    original_price: Optional[float]
+    final_price: Optional[float]
+    url: str
+    image: str | None = None
+    category: str
+    added_date: datetime
+    updated_date: datetime
+
+    class Config:
+        orm_mode = True
+-e 
+
+// --- FILE: ./main.py ---
+from fastapi import FastAPI, Depends
+from sqlalchemy.orm import Session
+from database import SessionLocal, engine, Base
+import models
+import schemas
+from typing import List
+from fastapi.middleware.cors import CORSMiddleware
+
+app = FastAPI()
+
+# Crear las tablas en la base de datos (si no existen)
+Base.metadata.create_all(bind=engine)
+
+# Configurar CORS para desarrollo (ajusta en producción)
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # Es recomendable especificar los orígenes permitidos
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+# Dependencia para obtener la sesión de la BD
+def get_db():
+    db = SessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()
+
+# Endpoint para obtener productos, con opción de búsqueda por título
+@app.get("/products", response_model=List[schemas.ProductBase])
+def read_products(query: str = "", db: Session = Depends(get_db)):
+    print("Request a /products - query:", query)
+    if query:
+        products = db.query(models.Product).filter(models.Product.title.ilike(f"%{query}%")).all()
+    else:
+        products = db.query(models.Product).all()
+    return products
+
+@app.get("/ping")
+def ping():
+    return {"status": "ok"}
+
+
+-e 
+
