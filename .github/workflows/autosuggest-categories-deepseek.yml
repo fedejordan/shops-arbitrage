@@ -22,7 +22,7 @@ jobs:
       - name: Run autosuggest
         run: |
           cd backend
-          python autosuggest.py
+          python autosuggest-product-categories.py
       - name: Upload informe
         uses: actions/upload-artifact@v4
         with:
