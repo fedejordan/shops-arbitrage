@@ -62,7 +62,25 @@ def main():
         suggestions_raw = ask_deepseek(titles, list(category_map.keys()))
 
         import json
-        suggestions = json.loads(suggestions_raw)
+        import re
+
+        # 1. Log raw content (opcional pero recomendable)
+        print("🔍 Respuesta raw de DeepSeek:")
+        print(suggestions_raw)
+
+        # 2. Intentar extraer JSON entre corchetes
+        json_match = re.search(r"\[\s*{.*}\s*]", suggestions_raw, re.DOTALL)
+
+        if not json_match:
+            raise Exception("❌ No se encontró una estructura JSON válida en la respuesta de DeepSeek")
+
+        try:
+            suggestions = json.loads(json_match.group(0))
+        except json.JSONDecodeError as e:
+            print("❗ Error al parsear JSON extraído:")
+            print(json_match.group(0))
+            raise e
+
 
         applied = []
         for suggestion in suggestions:
