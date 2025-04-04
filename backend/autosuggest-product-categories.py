@@ -27,13 +27,23 @@ def get_categories(session: Session):
 
 def ask_deepseek(titles, category_names):
     system = "Sos un clasificador. Te paso una lista de títulos de productos y las categorías disponibles. Indicá a cuál categoría pertenece cada producto. Respondé una lista en formato JSON."
-    user = {
-        "productos": titles,
-        "categorias": category_names
-    }
-    prompt = f"""Productos: {titles}
-Categorías disponibles: {', '.join(category_names)}
-Devolvé un JSON con: [{{"title": "...", "categoria": "..."}}]"""
+
+    prompt = f"""
+A continuación tenés una lista de productos y una lista de categorías disponibles.
+
+Tu tarea es asignar una única categoría a cada producto, eligiendo **solo** de las categorías provistas.
+
+Respondé exclusivamente una lista en formato JSON. Cada elemento debe tener esta estructura:
+[
+  {{"title": "título del producto", "categoria": "nombre exacto de la categoría"}}
+]
+
+Productos:
+{json.dumps(titles, ensure_ascii=False, indent=2)}
+
+Categorías disponibles:
+{json.dumps(category_names, ensure_ascii=False, indent=2)}
+"""
 
     res = httpx.post(
         "https://api.deepseek.com/v1/chat/completions",
@@ -49,10 +59,11 @@ Devolvé un JSON con: [{{"title": "...", "categoria": "..."}}]"""
             ],
             "temperature": 0.2
         },
-        timeout=60
+        timeout=120  # mayor timeout por si el prompt crece
     )
     res.raise_for_status()
     return res.json()["choices"][0]["message"]["content"]
+
 
 def main():
     session = SessionLocal()
