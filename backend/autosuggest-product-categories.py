@@ -9,13 +9,17 @@ import re
 import time
 import unicodedata
 
-def normalize_text(text):
-    return unicodedata.normalize("NFKC", text)
-
 load_dotenv()
 deepseek_key = os.getenv("DEEPSEEK_API_KEY")
 
 BATCH_SIZE = 20
+
+def normalize_text(text):
+    # Normaliza Unicode, convierte a minúsculas y colapsa espacios múltiples
+    text = unicodedata.normalize("NFKC", text)
+    text = text.lower()
+    text = " ".join(text.split())
+    return text
 
 def get_uncategorized_products(session: Session):
     return (
@@ -85,7 +89,7 @@ def main():
                 print("✅ No quedan más productos sin categorizar.")
                 break
 
-            titles = [p.title for p in products]
+            titles = [normalize_text(p.title) for p in products]
 
             try:
                 suggestions_raw = ask_deepseek(titles, list(category_map.keys()))
@@ -93,8 +97,8 @@ def main():
                 print(f"❌ Error en batch #{batch_num}: {e}")
                 break
 
-            print("🔍 Respuesta raw:")
-            print(suggestions_raw)
+            # print("🔍 Respuesta raw:")
+            # print(suggestions_raw)
 
             json_match = re.search(r"\[\s*{.*}\s*]", suggestions_raw, re.DOTALL)
             if not json_match:
@@ -118,7 +122,7 @@ def main():
                 )
                 if product and cat_name in category_map:
                     product.category_id = category_map[cat_name]                    
-                    product.title = normalize_text(product.title)
+                    # product.title = normalize_text(product.title)
                     print(f"✔️ {title} → {cat_name}")
                     applied.append((product.title, cat_name))
 
