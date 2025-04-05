@@ -7,6 +7,10 @@ from dotenv import load_dotenv
 import json
 import re
 import time
+import unicodedata
+
+def normalize_text(text):
+    return unicodedata.normalize("NFKC", text)
 
 load_dotenv()
 deepseek_key = os.getenv("DEEPSEEK_API_KEY")
@@ -108,9 +112,13 @@ def main():
             for suggestion in suggestions:
                 title = suggestion["title"]
                 cat_name = suggestion["categoria"].lower()
-                product = next((p for p in products if p.title == title), None)
+                product = next(
+                    (p for p in products if normalize_text(p.title) == normalize_text(title)),
+                    None
+                )
                 if product and cat_name in category_map:
-                    product.category_id = category_map[cat_name]
+                    product.category_id = category_map[cat_name]                    
+                    product.title = normalize_text(product.title)
                     print(f"✔️ {title} → {cat_name}")
                     applied.append((product.title, cat_name))
 
