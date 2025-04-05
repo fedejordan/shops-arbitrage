@@ -37,7 +37,7 @@ Respondé exclusivamente una lista en formato JSON. Cada elemento debe tener est
 [
   {{"title": "título del producto", "categoria": "nombre exacto de la categoría"}}
 ]
-
+Por favor, responde con el title y la categoria exacta que se te proporciona, sin normalizar.
 Productos:
 {json.dumps(titles, ensure_ascii=False, indent=2)}
 
@@ -64,9 +64,9 @@ Categorías disponibles:
     res.raise_for_status()
     return res.json()["choices"][0]["message"]["content"]
 
-
 def main():
     session = SessionLocal()
+    start_time = time.time()  # Iniciamos el cronómetro
     try:
         categories = get_categories(session)
         category_map = {c.name.lower(): c.id for c in categories}
@@ -120,9 +120,9 @@ def main():
             batch_log = [f"- `{title}` → **{cat}**" for title, cat in applied]
             summary_log.append(f"# Batch #{batch_num}\n\n" + "\n".join(batch_log))
 
-            # with open(f"deepseek_batch_{batch_num}.md", "w") as f:
-            #     f.write(f"# Sugerencias aplicadas - Batch #{batch_num}\n\n")
-            #     f.write("\n".join(batch_log))
+            # Calcular y mostrar el tiempo total de ejecución hasta este batch
+            elapsed_time = time.time() - start_time
+            print(f"⏱ Tiempo de ejecución total hasta el batch #{batch_num}: {elapsed_time:.2f} segundos.")
 
             print(f"✅ Batch #{batch_num} completo: {len(applied)} sugerencias aplicadas.")
             batch_num += 1
