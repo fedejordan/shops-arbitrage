@@ -10,6 +10,7 @@ import os
 import httpx
 from fastapi import HTTPException
 from dotenv import load_dotenv
+from sqlalchemy import func
 
 load_dotenv()
 
@@ -36,22 +37,63 @@ def get_db():
         db.close()
 
 # Endpoint para obtener productos, con opción de búsqueda por título
-@app.get("/products", response_model=List[schemas.ProductBase])
-def read_products(query: str = "", db: Session = Depends(get_db)):
-    print("Request a /products - query:", query)
-    if query:
-        products = db.query(models.Product).filter(models.Product.title.ilike(f"%{query}%")).all()
-    else:
-        products = db.query(models.Product).all()
-    
-    # Agregamos el nombre de la categoría manualmente
-    # for product in products:
-    #     if product.category_rel:
-    #         product.category_name = product.category_rel.name  # esto funciona si lo seteaste como propiedad
-    #     else:
-    #         product.category_name = None
+@app.get("/products")
+def read_products(
+    query: str = "",
+    sort: str = "",
+    retailers: str = "",
+    categories: str = "",
+    minPrice: float = 0.0,
+    maxPrice: float = 999999.0,
+    page: int = Query(1, ge=1),
+    limit: int = Query(20, ge=1, le=100),
+    db: Session = Depends(get_db)
+):
+    offset = (page - 1) * limit
+    print(f"Request a /products - query: {query}, page: {page}, limit: {limit}")
+    print("sort:", sort)
 
-    return products
+    q = db.query(models.Product)
+
+    if query:
+        q = q.filter(models.Product.title.ilike(f"%{query}%"))
+
+    # if retailers:
+    #     retailer_list = [r.strip() for r in retailers.split(",")]
+    #     q = q.join(models.Retailer).filter(models.Retailer.name.in_(retailer_list))
+
+    # if categories:
+    #     category_list = [c.strip() for c in categories.split(",")]
+    #     q = q.join(models.Category, isouter=True).filter(models.Category.name.in_(category_list))
+
+    # q = q.filter(models.Product.final_price >= minPrice, models.Product.final_price <= maxPrice)
+
+    if sort == "price_asc":
+        q = q.order_by(models.Product.final_price.asc())
+    elif sort == "price_desc":
+        q = q.order_by(models.Product.final_price.desc())
+    # elif sort == "name_asc":
+    #     q = q.order_by(models.Product.title.asc())
+    # elif sort == "name_desc":
+    #     q = q.order_by(models.Product.title.desc())
+    # elif sort == "retailer_asc":
+    #     q = q.join(models.Retailer).order_by(models.Retailer.name.asc())
+    # elif sort == "date_asc":
+    #     q = q.order_by(models.Product.added_date.asc())
+    # elif sort == "date_desc":
+    #     q = q.order_by(models.Product.added_date.desc())
+
+    total = q.count()
+
+    products = q.offset(offset).limit(limit).all()
+
+    return {
+        "data": products,
+        "total": total,
+        "page": page,
+        "limit": limit
+    }
+
 
 @app.get("/ping")
 def ping():

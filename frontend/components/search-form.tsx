@@ -37,6 +37,17 @@ import { Label } from "@/components/ui/label"
 import { Slider } from "@/components/ui/slider"
 import { Badge } from "@/components/ui/badge"
 import { Card } from "@/components/ui/card"
+import {
+  Pagination,
+  PaginationContent,
+  PaginationItem,
+  PaginationLink,
+  PaginationPrevious,
+  PaginationNext,
+  PaginationEllipsis,
+} from "@/components/ui/pagination"
+
+
 
 export function SearchForm() {
   const router = useRouter()
@@ -53,46 +64,52 @@ export function SearchForm() {
   const [priceRange, setPriceRange] = useState([0, 5000])
   const [selectedRetailers, setSelectedRetailers] = useState<string[]>([])
   const [selectedCategories, setSelectedCategories] = useState<string[]>([])
+
+  // Paginado
+  const [page, setPage] = useState(1)
+  const [totalPages, setTotalPages] = useState(1)
+  const limit = 20 // o el número que prefieras
+
   
   // Datos de ejemplo para retailers y categorías
   const retailers = ["Amazon", "Mercado Libre", "Falabella", "Paris", "Ripley"]
   const categories = ["Electrónica", "Hogar", "Ropa", "Juguetes", "Deportes", "Mascotas"]
 
-  const handleSearch = async (e: React.FormEvent) => {
-    e.preventDefault()
-
-    if (!searchQuery.trim()) return
-
+  const fetchProducts = async (pageToLoad: number) => {
     setLoading(true)
     setSearched(true)
-
+  
     try {
-      // Construir URL con todos los parámetros
-      let url = `${process.env.NEXT_PUBLIC_API_BASE_URL}/products?query=${encodeURIComponent(searchQuery)}`
-      
-      // Agregar parámetros de ordenamiento y filtrado
+      let url = `${process.env.NEXT_PUBLIC_API_BASE_URL}/products?query=${encodeURIComponent(searchQuery)}&page=${pageToLoad}&limit=${limit}`
+  
       if (sortBy) url += `&sort=${sortBy}`
       if (selectedRetailers.length > 0) url += `&retailers=${selectedRetailers.join(',')}`
       if (selectedCategories.length > 0) url += `&categories=${selectedCategories.join(',')}`
       url += `&minPrice=${priceRange[0]}&maxPrice=${priceRange[1]}`
-      
+  
       const response = await fetch(url)
-      const data = await response.json()
-      setProducts(data)
-
-      // Update URL with search query and parameters
-      let routerUrl = `/?q=${encodeURIComponent(searchQuery)}`
+      const result = await response.json()
+      setProducts(result.data)
+      setTotalPages(Math.ceil(result.total / limit))
+      setPage(pageToLoad) // actualizás el estado recién después de éxito
+  
+      // Actualizar la URL
+      let routerUrl = `/?q=${encodeURIComponent(searchQuery)}&page=${pageToLoad}`
       if (sortBy) routerUrl += `&sort=${sortBy}`
       if (selectedRetailers.length > 0) routerUrl += `&retailers=${selectedRetailers.join(',')}`
       if (selectedCategories.length > 0) routerUrl += `&categories=${selectedCategories.join(',')}`
       routerUrl += `&minPrice=${priceRange[0]}&maxPrice=${priceRange[1]}`
-      
       router.push(routerUrl, { scroll: false })
     } catch (error) {
       console.error("Error searching products:", error)
     } finally {
       setLoading(false)
     }
+  }
+
+  const handleSearch = (e: React.FormEvent) => {
+    e.preventDefault()
+    fetchProducts(1) // siempre buscás desde la página 1 al hacer una nueva búsqueda
   }
 
   const toggleRetailer = (retailer: string) => {
@@ -409,6 +426,90 @@ export function SearchForm() {
                 )}
               </div>
               <ProductList products={products} />
+              {products.length > 0 && (
+                <Pagination className="mt-6">
+                  <PaginationContent>
+                    {page > 1 && (
+                      <PaginationItem>
+                        <PaginationPrevious
+                          href="#"
+                          onClick={(e) => {
+                            e.preventDefault()
+                            fetchProducts(page - 1)
+                          }}
+                        />
+                      </PaginationItem>
+                    )}
+
+                    {page > 2 && (
+                      <PaginationItem>
+                        <PaginationLink href="#" onClick={(e) => {
+                          e.preventDefault()
+                          fetchProducts(1)
+                        }}>
+                          1
+                        </PaginationLink>
+                      </PaginationItem>
+                    )}
+
+                    {page > 3 && (
+                      <PaginationItem>
+                        <PaginationEllipsis />
+                      </PaginationItem>
+                    )}
+
+                    {[-1, 0, 1].map((offset) => {
+                      const p = page + offset
+                      if (p > 0 && p <= totalPages) {
+                        return (
+                          <PaginationItem key={p}>
+                            <PaginationLink
+                              href="#"
+                              isActive={p === page}
+                              onClick={(e) => {
+                                e.preventDefault()
+                                fetchProducts(p)
+                              }}
+                            >
+                              {p}
+                            </PaginationLink>
+                          </PaginationItem>
+                        )
+                      }
+                      return null
+                    })}
+
+                    {page < totalPages - 2 && (
+                      <PaginationItem>
+                        <PaginationEllipsis />
+                      </PaginationItem>
+                    )}
+
+                    {page < totalPages - 1 && (
+                      <PaginationItem>
+                        <PaginationLink href="#" onClick={(e) => {
+                          e.preventDefault()
+                          fetchProducts(totalPages)
+                        }}>
+                          {totalPages}
+                        </PaginationLink>
+                      </PaginationItem>
+                    )}
+
+                    {page < totalPages && (
+                      <PaginationItem>
+                        <PaginationNext
+                          href="#"
+                          onClick={(e) => {
+                            e.preventDefault()
+                            fetchProducts(page + 1)
+                          }}
+                        />
+                      </PaginationItem>
+                    )}
+                  </PaginationContent>
+                </Pagination>
+              )}
             </>
           )}
         </div>
