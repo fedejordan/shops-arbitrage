@@ -82,6 +82,8 @@ def read_products(
     #     q = q.order_by(models.Product.added_date.asc())
     # elif sort == "date_desc":
     #     q = q.order_by(models.Product.added_date.desc())
+    else:
+        q = q.order_by(models.Product.updated_date.desc(), models.Product.id.desc())
 
     total = q.count()
 
