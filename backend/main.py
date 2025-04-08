@@ -54,7 +54,7 @@ def read_products(
     retailers: str = "",
     categories: str = "",
     minPrice: float = 0.0,
-    maxPrice: float = 999999.0,
+    maxPrice: float = 99999999.0,
     page: int = Query(1, ge=1),
     limit: int = Query(20, ge=1, le=100),
     db: Session = Depends(get_db)
@@ -80,7 +80,7 @@ def read_products(
         category_list = [c.strip() for c in categories.split("|")]
         q = q.join(models.Category, isouter=True).filter(models.Category.name.in_(category_list))
 
-    # q = q.filter(models.Product.final_price >= minPrice, models.Product.final_price <= maxPrice)
+    q = q.filter(models.Product.final_price >= minPrice, models.Product.final_price <= maxPrice)
 
     if sort == "price_asc":
         q = q.order_by(models.Product.final_price.asc())

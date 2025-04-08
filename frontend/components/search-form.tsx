@@ -61,7 +61,7 @@ export function SearchForm() {
   // Nuevos estados para filtros y ordenamiento
   const [showFilters, setShowFilters] = useState(false)
   const [sortBy, setSortBy] = useState("")
-  const [priceRange, setPriceRange] = useState([0, 5000])
+  const [priceRange, setPriceRange] = useState([0, 99999999])
   const [selectedRetailers, setSelectedRetailers] = useState<string[]>([])
   const [selectedCategories, setSelectedCategories] = useState<string[]>([])
 
@@ -151,7 +151,7 @@ export function SearchForm() {
 
   const clearFilters = () => {
     setSortBy("")
-    setPriceRange([0, 5000])
+    setPriceRange([0, 9999999])
     setSelectedRetailers([])
     setSelectedCategories([])
   }
@@ -160,7 +160,7 @@ export function SearchForm() {
     sortBy !== "",
     selectedRetailers.length > 0,
     selectedCategories.length > 0,
-    !(priceRange[0] === 0 && priceRange[1] === 5000)
+    !(priceRange[0] === 0 && priceRange[1] === 99999999)
   ].filter(Boolean).length
 
   return (
@@ -286,29 +286,44 @@ export function SearchForm() {
                   </AccordionItem>
                   
                   <AccordionItem value="price">
-                    <AccordionTrigger className="py-2">
-                      Rango de precios
-                      {!(priceRange[0] === 0 && priceRange[1] === 5000) && (
-                        <Badge variant="secondary" className="ml-2 text-xs">
-                          ${priceRange[0]} - ${priceRange[1]}
-                        </Badge>
-                      )}
-                    </AccordionTrigger>
-                    <AccordionContent>
-                      <div className="space-y-4 px-1 pt-2">
-                        <Slider 
-                          value={priceRange}
-                          min={0}
-                          max={5000}
-                          step={100}
-                          onValueChange={handlePriceChange}
+                  <AccordionTrigger className="py-2">
+                    Rango de precios
+                    {!(priceRange[0] === 0 && priceRange[1] === 99999999) && (
+                      <Badge variant="secondary" className="ml-2 text-xs">
+                        ${priceRange[0]} - ${priceRange[1]}
+                      </Badge>
+                    )}
+                  </AccordionTrigger>
+                  <AccordionContent>
+                    <div className="grid grid-cols-2 gap-4 px-1 pt-2">
+                      <div className="space-y-1">
+                        <Label htmlFor="minPrice">Precio mínimo</Label>
+                        <Input
+                          id="minPrice"
+                          type="number"
+                          placeholder="0"
+                          value={priceRange[0]}
+                          onChange={(e) => {
+                            const val = Number(e.target.value)
+                            setPriceRange([isNaN(val) ? 0 : val, priceRange[1]])
+                          }}
                         />
-                        <div className="flex items-center justify-between text-sm">
-                          <span>${priceRange[0]}</span>
-                          <span>${priceRange[1]}</span>
-                        </div>
                       </div>
-                    </AccordionContent>
+                      <div className="space-y-1">
+                        <Label htmlFor="maxPrice">Precio máximo</Label>
+                        <Input
+                          id="maxPrice"
+                          type="number"
+                          placeholder="Sin límite"
+                          value={priceRange[1] === 99999999 ? "" : priceRange[1]}
+                          onChange={(e) => {
+                            const val = Number(e.target.value)
+                            setPriceRange([priceRange[0], isNaN(val) || val === 0 ? 99999999 : val])
+                          }}
+                        />
+                      </div>
+                    </div>
+                  </AccordionContent>
                   </AccordionItem>
                 </Accordion>
                 
@@ -385,14 +400,14 @@ export function SearchForm() {
               </Badge>
             )}
             
-            {!(priceRange[0] === 0 && priceRange[1] === 5000) && (
+            {!(priceRange[0] === 0 && priceRange[1] === 99999999) && (
               <Badge variant="secondary" className="flex items-center gap-1 pr-1">
                 ${priceRange[0]} - ${priceRange[1]}
                 <Button 
                   variant="ghost" 
                   size="icon" 
                   className="h-4 w-4" 
-                  onClick={() => setPriceRange([0, 5000])}
+                  onClick={() => setPriceRange([0, 99999999])}
                 >
                   <X className="h-3 w-3" />
                 </Button>
