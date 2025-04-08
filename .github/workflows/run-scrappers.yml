@@ -20,7 +20,8 @@ jobs:
           - musimundo
           - garbarino
           - philco
-          - fravega
+          - fravega-1
+          - fravega-2
           - whirlpool-argentina
 
     steps:

@@ -2,8 +2,8 @@ name: Autosuggest Categorías
 
 on:
   workflow_dispatch:
-  schedule:
-    - cron: '0 5 * * *'  # todos los días a las 5 AM UTC
+  # schedule:
+  #   - cron: '0 5 * * *'  # todos los días a las 5 AM UTC
 
 jobs:
   autosuggest:
