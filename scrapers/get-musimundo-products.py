@@ -147,10 +147,39 @@ for base_url in category_urls:
                 img_tag = product.find("img")
                 image_url = img_tag["src"] if img_tag and "src" in img_tag.attrs else ""
 
+                print(f"Producto: {title} | Final: {final_price} | Original: {original_price if original_price else 'N/A'}")
+
+                # Verificar si el producto ya existe
                 cursor.execute("""
-                    INSERT INTO products (title, original_price, final_price, url, image, category, retailer_id, added_date, updated_date)
+                    SELECT id, original_price, final_price
+                    FROM products
+                    WHERE url = %s
+                """, (link,))
+                existing_product = cursor.fetchone()
+
+                # Si existe y el precio cambió, guardar el histórico
+                if existing_product:
+                    product_id_db, old_original_price, old_final_price = existing_product
+                    if (
+                        (old_original_price != original_price and original_price is not None)
+                        or (old_final_price != final_price and final_price is not None)
+                    ):
+                        cursor.execute("""
+                            INSERT INTO historical_prices (product_id, original_price, final_price)
+                            VALUES (%s, %s, %s)
+                        """, (product_id_db, old_original_price, old_final_price))
+
+                cursor.execute("""
+                    INSERT INTO products (title, original_price, final_price, url, image, retail_category, retailer_id, added_date, updated_date)
                     VALUES (%s, %s, %s, %s, %s, %s, %s, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
-                    ON CONFLICT (url) DO UPDATE SET updated_date = CURRENT_TIMESTAMP
+                    ON CONFLICT (url) DO UPDATE SET 
+                        title = EXCLUDED.title,
+                        original_price = EXCLUDED.original_price,
+                        final_price = EXCLUDED.final_price,
+                        image = EXCLUDED.image,
+                        retail_category = EXCLUDED.retail_category,
+                        retailer_id = EXCLUDED.retailer_id,
+                        updated_date = CURRENT_TIMESTAMP
                 """, (title, original_price, final_price, link, image_url, category, retailer_id))
 
                 print(f"✔ Producto: {title} | Final: {final_price}")
