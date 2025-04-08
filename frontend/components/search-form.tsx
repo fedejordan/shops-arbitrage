@@ -71,9 +71,17 @@ export function SearchForm() {
   const limit = 20 // o el número que prefieras
 
   
-  // Datos de ejemplo para retailers y categorías
-  const categories = ["Electrónica", "Hogar", "Ropa", "Juguetes", "Deportes", "Mascotas"]
+  // Cargar las categorías desde la API
+  const [categories, setCategories] = useState<string[]>([])
 
+  useEffect(() => {
+    fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/categories`)
+      .then(res => res.json())
+      .then(data => setCategories(data.map((c: { name: string }) => c.name)))
+      .catch(err => console.error("Error cargando categorías:", err))
+  }, [])
+
+  // Cargar los retailers desde la API
   const [retailers, setRetailers] = useState<string[]>([])
 
   useEffect(() => {
@@ -93,7 +101,7 @@ export function SearchForm() {
   
       if (sortBy) url += `&sort=${sortBy}`
       if (selectedRetailers.length > 0) url += `&retailers=${selectedRetailers.join(',')}`
-      if (selectedCategories.length > 0) url += `&categories=${selectedCategories.join(',')}`
+      if (selectedCategories.length > 0) url += `&categories=${selectedCategories.join('|')}`
       url += `&minPrice=${priceRange[0]}&maxPrice=${priceRange[1]}`
   
       const response = await fetch(url)

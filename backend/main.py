@@ -14,6 +14,7 @@ from sqlalchemy import func
 import logging
 from sqlalchemy.orm import joinedload
 import time
+from urllib.parse import unquote
 
 # Configurar el logger para SQLAlchemy
 logging.basicConfig()
@@ -75,9 +76,9 @@ def read_products(
         retailer_list = [r.strip() for r in retailers.split(",")]
         q = q.join(models.Retailer).filter(models.Retailer.name.in_(retailer_list))
 
-    # if categories:
-    #     category_list = [c.strip() for c in categories.split(",")]
-    #     q = q.join(models.Category, isouter=True).filter(models.Category.name.in_(category_list))
+    if categories:
+        category_list = [c.strip() for c in categories.split("|")]
+        q = q.join(models.Category, isouter=True).filter(models.Category.name.in_(category_list))
 
     # q = q.filter(models.Product.final_price >= minPrice, models.Product.final_price <= maxPrice)
 
