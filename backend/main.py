@@ -11,9 +11,18 @@ import httpx
 from fastapi import HTTPException
 from dotenv import load_dotenv
 from sqlalchemy import func
+import logging
+from sqlalchemy.orm import joinedload
+import time
 
+# Configurar el logger para SQLAlchemy
+logging.basicConfig()
+# logging.getLogger("sqlalchemy.engine").setLevel(logging.INFO)
+
+# Cargar las variables de entorno desde el archivo .env
 load_dotenv()
 
+# Cargar las variables de entorno desde el archivo .env
 app = FastAPI()
 
 # Crear las tablas en la base de datos (si no existen)
@@ -37,7 +46,7 @@ def get_db():
         db.close()
 
 # Endpoint para obtener productos, con opción de búsqueda por título
-@app.get("/products")
+@app.get("/products", response_model=schemas.ProductListResponse)
 def read_products(
     query: str = "",
     sort: str = "",
@@ -51,9 +60,13 @@ def read_products(
 ):
     offset = (page - 1) * limit
     print(f"Request a /products - query: {query}, page: {page}, limit: {limit}")
-    print("sort:", sort)
+    print("sort:", sort)    
 
-    q = db.query(models.Product)
+    start_time = time.perf_counter()
+    q = db.query(models.Product).options(
+        joinedload(models.Product.retailer),
+        joinedload(models.Product.category_rel)
+    )
 
     if query:
         q = q.filter(models.Product.title.ilike(f"%{query}%"))
@@ -88,6 +101,9 @@ def read_products(
     total = q.count()
 
     products = q.offset(offset).limit(limit).all()
+
+    duration = time.perf_counter() - start_time
+    print(f"⏱️ Tiempo total de ejecución /products: {duration:.4f} segundos")
 
     return {
         "data": products,

@@ -5,8 +5,17 @@ export interface Product {
   final_price: number
   url: string
   image: string | null
-  category: string | null
+  category_name: string | null
+  retailer: {
+    name: string
+  } | null
   added_date: string
   updated_date: string
 }
 
+export interface ProductResponse {
+  data: Product[]
+  total: number
+  page: number
+  limit: number
+}

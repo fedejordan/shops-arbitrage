@@ -12,7 +12,9 @@ export function ProductList({ products }: { products: Product[] }) {
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-      {products.map((product) => (
+      {products.map((product) => {
+        console.log(product.title, product.category_name)
+        return (
         <Card key={product.id} className="overflow-hidden">
           <CardContent className="p-0">
             <div className="flex flex-col sm:flex-row">
@@ -72,7 +74,7 @@ export function ProductList({ products }: { products: Product[] }) {
             </div>
           </CardContent>
         </Card>
-      ))}
+      )})}
     </div>
   )
 }

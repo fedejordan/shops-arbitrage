@@ -7,7 +7,7 @@ import { useRouter, useSearchParams } from "next/navigation"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { ProductList } from "./product-list"
-import type { Product } from "@/lib/types"
+import type { Product, ProductResponse } from "@/lib/types"
 import { 
   Search, 
   SlidersHorizontal,
@@ -88,7 +88,7 @@ export function SearchForm() {
       url += `&minPrice=${priceRange[0]}&maxPrice=${priceRange[1]}`
   
       const response = await fetch(url)
-      const result = await response.json()
+      const result: ProductResponse = await response.json()
       setProducts(result.data)
       setTotalPages(Math.ceil(result.total / limit))
       setPage(pageToLoad) // actualizás el estado recién después de éxito

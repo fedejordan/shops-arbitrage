@@ -1,6 +1,6 @@
 from pydantic import BaseModel
 from datetime import datetime
-from typing import Optional
+from typing import Optional, List
 
 class RetailerBase(BaseModel):
     name: str
@@ -45,3 +45,9 @@ class RetailerCategory(RetailerCategoryBase):
     id: int
     class Config:
         orm_mode = True
+
+class ProductListResponse(BaseModel):
+    data: List[ProductBase]
+    total: int
+    page: int
+    limit: int
