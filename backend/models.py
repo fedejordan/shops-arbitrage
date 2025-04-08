@@ -15,7 +15,7 @@ class Product(Base):
     updated_date = Column(DateTime)
     retailer = Column(String, index=True)  # opcional, si querés guardar redundancia textual
     retailer_id = Column(Integer, ForeignKey("retailers.id"))
-    retailer = relationship("Retailer")
+    retailer = relationship("Retailer", back_populates="products")
     category_id = Column(Integer, ForeignKey("categories.id"), nullable=True)
     category_rel = relationship("Category", backref="products")
 
@@ -29,6 +29,7 @@ class Retailer(Base):
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String, index=True)
     url = Column(String)
+    products = relationship("Product", back_populates="retailer")
 
 class Category(Base):
     __tablename__ = 'categories'

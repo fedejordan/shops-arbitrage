@@ -3,6 +3,7 @@ from datetime import datetime
 from typing import Optional, List
 
 class RetailerBase(BaseModel):
+    id: int
     name: str
 
     class Config:

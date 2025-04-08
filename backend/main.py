@@ -71,9 +71,9 @@ def read_products(
     if query:
         q = q.filter(models.Product.title.ilike(f"%{query}%"))
 
-    # if retailers:
-    #     retailer_list = [r.strip() for r in retailers.split(",")]
-    #     q = q.join(models.Retailer).filter(models.Retailer.name.in_(retailer_list))
+    if retailers:
+        retailer_list = [r.strip() for r in retailers.split(",")]
+        q = q.join(models.Retailer).filter(models.Retailer.name.in_(retailer_list))
 
     # if categories:
     #     category_list = [c.strip() for c in categories.split(",")]
@@ -224,3 +224,7 @@ def suggest_category(product_id: int, db: Session = Depends(get_db)):
         return {"suggested_category_id": matched_category.id}
     else:
         return {"suggested_category_id": None, "suggested_category_name": answer}
+    
+@app.get("/retailers/", response_model=list[schemas.RetailerBase])
+def get_retailers(db: Session = Depends(get_db)):
+    return db.query(models.Retailer).order_by(models.Retailer.name.asc()).all()

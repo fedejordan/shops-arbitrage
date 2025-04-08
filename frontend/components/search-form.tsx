@@ -2,7 +2,7 @@
 
 import type React from "react"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
@@ -72,8 +72,17 @@ export function SearchForm() {
 
   
   // Datos de ejemplo para retailers y categorías
-  const retailers = ["Amazon", "Mercado Libre", "Falabella", "Paris", "Ripley"]
   const categories = ["Electrónica", "Hogar", "Ropa", "Juguetes", "Deportes", "Mascotas"]
+
+  const [retailers, setRetailers] = useState<string[]>([])
+
+  useEffect(() => {
+    fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/retailers`)
+      .then(res => res.json())
+      .then(data => setRetailers(data.map((r: { name: string }) => r.name)))
+      .catch(err => console.error("Error cargando retailers:", err))
+  }, [])
+
 
   const fetchProducts = async (pageToLoad: number) => {
     setLoading(true)
