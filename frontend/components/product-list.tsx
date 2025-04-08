@@ -2,7 +2,7 @@ import Image from "next/image"
 import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import type { Product } from "@/lib/types"
-import { formatCurrency, calculateDiscount } from "@/lib/utils"
+import { formatCurrency, calculateDiscount, timeAgo } from "@/lib/utils"
 import { ExternalLink } from "lucide-react"
 
 export function ProductList({ products }: { products: Product[] }) {
@@ -13,7 +13,8 @@ export function ProductList({ products }: { products: Product[] }) {
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
       {products.map((product) => {
-        console.log(product.title, product.category_name)
+        console.log(product.title + " - " + product.category_name + " - " + product.added_date + " - " + product.updated_date)
+        console.log(new Date(product.added_date))
         return (
         <Card key={product.id} className="overflow-hidden">
           <CardContent className="p-0">
@@ -39,6 +40,16 @@ export function ProductList({ products }: { products: Product[] }) {
                     {product.retailer?.name && (
                       <Badge variant="secondary" className="text-xs">
                         {product.retailer.name}
+                      </Badge>
+                    )}
+                    {product.added_date && (
+                      <Badge variant="outline" className="text-xs text-gray-500">
+                        Agregado hace {timeAgo(product.added_date)}
+                      </Badge>
+                    )}
+                    {product.updated_date && (
+                      <Badge variant="outline" className="text-xs text-gray-400">
+                        Editado hace {timeAgo(product.updated_date)}
                       </Badge>
                     )}
                   </div>

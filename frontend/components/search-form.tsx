@@ -200,6 +200,7 @@ export function SearchForm() {
                       <SelectItem value="price_asc">Precio (menor a mayor)</SelectItem>
                       <SelectItem value="price_desc">Precio (mayor a menor)</SelectItem>
                       <SelectItem value="retailer_asc">Retailer (A-Z)</SelectItem>
+                      <SelectItem value="retailer_desc">Retailer (Z-A)</SelectItem>
                       <SelectItem value="date_desc">Más recientes primero</SelectItem>
                       <SelectItem value="date_asc">Más antiguos primero</SelectItem>
                     </SelectContent>

@@ -85,16 +85,18 @@ def read_products(
         q = q.order_by(models.Product.final_price.asc())
     elif sort == "price_desc":
         q = q.order_by(models.Product.final_price.desc())
-    # elif sort == "name_asc":
-    #     q = q.order_by(models.Product.title.asc())
-    # elif sort == "name_desc":
-    #     q = q.order_by(models.Product.title.desc())
-    # elif sort == "retailer_asc":
-    #     q = q.join(models.Retailer).order_by(models.Retailer.name.asc())
-    # elif sort == "date_asc":
-    #     q = q.order_by(models.Product.added_date.asc())
-    # elif sort == "date_desc":
-    #     q = q.order_by(models.Product.added_date.desc())
+    elif sort == "name_asc":
+        q = q.order_by(models.Product.title.asc())
+    elif sort == "name_desc":
+        q = q.order_by(models.Product.title.desc())
+    elif sort == "retailer_asc":
+        q = q.join(models.Retailer).order_by(models.Retailer.name.asc())
+    elif sort == "retailer_desc":
+        q = q.join(models.Retailer).order_by(models.Retailer.name.desc())
+    elif sort == "date_asc":
+        q = q.order_by(models.Product.added_date.asc())
+    elif sort == "date_desc":
+        q = q.order_by(models.Product.added_date.desc())
     else:
         q = q.order_by(models.Product.updated_date.desc(), models.Product.id.desc())
 
