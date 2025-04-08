@@ -65,7 +65,6 @@ cursor.execute("""
 cursor.execute("SELECT id FROM retailers WHERE url = %s", (retailer_url,))
 retailer_id = cursor.fetchone()[0]
 
-
 # Función para limpiar y convertir precios
 def parse_price(price_str):
     if not price_str:
@@ -84,6 +83,8 @@ start_time = time.time()
 for base_url in category_urls:
     page = 1
     category = base_url.split("/")[-1].replace(".html", "")
+    previous_product_urls = set()
+
     while True:
         print(f"Scrapeando {category} - Página {page}...")
         try:
@@ -95,6 +96,18 @@ for base_url in category_urls:
             if not products:
                 print(f"🚫 No se encontraron productos en {category} página {page}. Fin de categoría.")
                 break
+
+            current_product_urls = set()
+            for product in products:
+                link_tag = product.find("a", class_="product-item-info product-card", href=True)
+                link = link_tag["href"] if link_tag else ""
+                current_product_urls.add(link)
+
+            if current_product_urls == previous_product_urls:
+                print(f"🔁 Página {page} repetida. Fin de categoría {category}.")
+                break
+
+            previous_product_urls = current_product_urls
 
             for product in products:
                 try:
@@ -154,7 +167,6 @@ for base_url in category_urls:
                                 VALUES (%s, %s, %s)
                             """, (product_id_db, old_original_price, old_final_price))
 
-
                     cursor.execute("""
                         INSERT INTO products (title, original_price, final_price, url, image, retail_category, retailer_id, added_date, updated_date)
                         VALUES (%s, %s, %s, %s, %s, %s, %s, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
@@ -175,7 +187,6 @@ for base_url in category_urls:
                         category,
                         retailer_id
                     ))
-
 
                     print(f"✔ Producto: {title} | Final: {final_price} | Original: {original_price if original_price else 'N/A'}")
                 except Exception as e:
