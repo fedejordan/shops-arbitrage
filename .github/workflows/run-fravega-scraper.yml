@@ -48,10 +48,10 @@ jobs:
         cd scrapers
         if [ "${{ matrix.part }}" = "part1" ]; then
           echo "Ejecutando parte 1 (hasta indumentaria)"
-          python get-fravega-products-part1.py || echo "Script failed with exit code $?"
+          python get-fravega-1-products.py || echo "Script failed with exit code $?"
         else
           echo "Ejecutando parte 2 (el resto de categorías)"
-          python get-fravega-products-part2.py || echo "Script failed with exit code $?"
+          python get-fravega-2-products.py || echo "Script failed with exit code $?"
         fi
 
     - name: Upload error log if it exists
