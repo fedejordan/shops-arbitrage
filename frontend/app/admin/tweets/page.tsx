@@ -30,8 +30,27 @@ export default function TweetSuggestions() {
   const [discountGroups, setDiscountGroups] = useState<any[]>([])
   const [loadingTips, setLoadingTips] = useState(false)
 const [educationalTweets, setEducationalTweets] = useState<string[]>([])
-  const [view, setView] = useState<"arbitrajes" | "descuentos" | "top" | "historic" | "weekly" | "educational">("arbitrajes")
-
+  const [view, setView] = useState<"arbitrajes" | "descuentos" | "top" | "historic" | "weekly" | "educational" | "polls">("arbitrajes")
+  const [loadingPolls, setLoadingPolls] = useState(false)
+  const [pollTweets, setPollTweets] = useState<string[]>([])
+  
+  const generatePolls = async () => {
+    setLoadingPolls(true)
+    try {
+      const url = process.env.NEXT_PUBLIC_API_BASE_URL || ""
+      const res = await fetch(`${url}/tweets/polls`)
+      const data = await res.json()
+      if (Array.isArray(data)) {
+        setPollTweets(data)
+        setView("polls")
+      }
+    } catch (err) {
+      console.error("Error al obtener encuestas", err)
+    } finally {
+      setLoadingPolls(false)
+    }
+  }
+  
   const generateEducational = async () => {
     setLoadingTips(true)
     try {
@@ -161,23 +180,26 @@ const [educationalTweets, setEducationalTweets] = useState<string[]>([])
         Generá automáticamente ideas de tweets en base a la base de datos de productos.
       </p>
       <div className="flex gap-4">
-        <Button onClick={generateArbitrages} disabled={loadingWeekly || loadingHistorico || loadingTop || loadingDescuentos || loadingArbitrajes || loadingTips}>
+        <Button onClick={generateArbitrages} disabled={loadingWeekly || loadingHistorico || loadingTop || loadingDescuentos || loadingArbitrajes || loadingTips || loadingPolls}>
             {loadingArbitrajes ? "Generando..." : "Tweets de arbitrajes"}
         </Button>
-        <Button onClick={generateDiscounts} disabled={loadingWeekly || loadingHistorico || loadingTop || loadingDescuentos || loadingArbitrajes || loadingTips}>
+        <Button onClick={generateDiscounts} disabled={loadingWeekly || loadingHistorico || loadingTop || loadingDescuentos || loadingArbitrajes || loadingTips || loadingPolls}>
             {loadingDescuentos ? "Buscando..." : "Tweets de ofertas individuales"}
         </Button>
-        <Button onClick={generateTopDiscounts} disabled={loadingWeekly || loadingHistorico || loadingTop || loadingDescuentos || loadingArbitrajes || loadingTips}>
+        <Button onClick={generateTopDiscounts} disabled={loadingWeekly || loadingHistorico || loadingTop || loadingDescuentos || loadingArbitrajes || loadingTips || loadingPolls}>
             {loadingTop ? "Cargando..." : "Top descuentos de hoy"}
         </Button>
-        <Button onClick={generateHistoricDrop} disabled={loadingWeekly || loadingHistorico || loadingTop || loadingDescuentos || loadingArbitrajes || loadingTips}>
+        <Button onClick={generateHistoricDrop} disabled={loadingWeekly || loadingHistorico || loadingTop || loadingDescuentos || loadingArbitrajes || loadingTips || loadingPolls}>
             {loadingHistorico ? "Analizando..." : "Mayor baja histórica"}
         </Button>
-        <Button onClick={generateWeeklyDrops} disabled={loadingWeekly || loadingHistorico || loadingTop || loadingDescuentos || loadingArbitrajes || loadingTips}>
+        <Button onClick={generateWeeklyDrops} disabled={loadingWeekly || loadingHistorico || loadingTop || loadingDescuentos || loadingArbitrajes || loadingTips || loadingPolls}>
             {loadingWeekly ? "Buscando..." : "Bajas de precio esta semana"}
         </Button>
-        <Button onClick={generateEducational} disabled={loadingTips || loadingTop || loadingHistorico}>
+        <Button onClick={generateEducational} disabled={loadingTips || loadingTop || loadingHistorico || loadingPolls || loadingDescuentos || loadingArbitrajes || loadingWeekly}>
             {loadingTips ? "Generando..." : "Tips educativos"}
+        </Button>
+        <Button onClick={generatePolls} disabled={loadingPolls || loadingTop || loadingHistorico || loadingDescuentos || loadingArbitrajes || loadingWeekly || loadingTips}>
+            {loadingPolls ? "Cargando..." : "Tweets con encuesta"}
         </Button>
 
 
@@ -344,6 +366,24 @@ const [educationalTweets, setEducationalTweets] = useState<string[]>([])
             </Card>
         )
         })}
+        {view === "polls" && pollTweets.map((text, idx) => {
+            const uid = `poll-${idx}`
+            return (
+                <Card key={uid}>
+                <CardContent className="p-4 space-y-2">
+                    <p>{text}</p>
+                    <div className="flex gap-2">
+                    <Button variant="outline" size="sm" onClick={() => handleCopy(uid, text)}>
+                        {copiedId === uid ? <><Check className="w-4 h-4 mr-1 text-green-500" /> Copiado</> : <><Clipboard className="w-4 h-4 mr-1" /> Copiar</>}
+                    </Button>
+                    <Button variant="default" size="sm" onClick={() => handleTweet(text)}>
+                        <Twitter className="w-4 h-4 mr-1" /> Tweetear ahora
+                    </Button>
+                    </div>
+                </CardContent>
+                </Card>
+            )
+            })}
 
 
     </div>

@@ -800,3 +800,76 @@ def get_educational_tweets(db: Session = Depends(get_db)):
     except Exception as e:
         print("❌ Error al consultar DeepSeek:", e)
         raise HTTPException(status_code=500, detail="Error al generar tweets educativos")
+
+@app.get("/tweets/polls")
+def get_poll_tweet_ideas(db: Session = Depends(get_db)):
+    import os
+    import httpx
+    import json
+    import re
+
+    # Obtener 4 productos con descuento (como opciones del poll)
+    productos = (
+        db.query(models.Product)
+        .join(models.Retailer)
+        .filter(
+            models.Product.original_price != None,
+            models.Product.original_price > 0,
+            models.Product.final_price < models.Product.original_price
+        )
+        .order_by(func.random())
+        .limit(4)
+        .options(joinedload(models.Product.retailer))
+        .all()
+    )
+
+    if len(productos) < 4:
+        return []
+
+    opciones = []
+    prompt = (
+        "Generá 2 variantes de tweets en formato encuesta (poll) con los siguientes productos, "
+        "donde se invite al público a elegir cuál aprovecharían, mencionando los precios y la plataforma 'TuPrecioIdeal' como fuente. "
+        "Respondé en JSON como lista de strings:\n\n"
+        "[\"Tweet 1\", \"Tweet 2\"]\n\n"
+        "Productos:\n"
+    )
+
+    for p in productos:
+        pct = round((1 - p.final_price / p.original_price) * 100)
+        prompt += f"- {p.title} ({p.retailer.name}): ${int(p.final_price)} (-{pct}%)\n"
+        opciones.append(p.title)
+
+    try:
+        deepseek_api_key = os.getenv("DEEPSEEK_API_KEY")
+        if not deepseek_api_key:
+            raise HTTPException(status_code=500, detail="DEEPSEEK_API_KEY not set")
+
+        response = httpx.post(
+            "https://api.deepseek.com/v1/chat/completions",
+            headers={
+                "Authorization": f"Bearer {deepseek_api_key}",
+                "Content-Type": "application/json"
+            },
+            json={
+                "model": "deepseek-chat",
+                "messages": [
+                    { "role": "system", "content": "Sos un community manager creativo especializado en ecommerce." },
+                    { "role": "user", "content": prompt }
+                ],
+                "temperature": 0.7
+            },
+            timeout=60.0
+        )
+        response.raise_for_status()
+        raw = response.json()["choices"][0]["message"]["content"]
+
+        raw = re.sub(r"^```json\s*", "", raw)
+        raw = re.sub(r"\s*```$", "", raw)
+        parsed = json.loads(raw)
+
+    except Exception as e:
+        print("❌ Error al generar encuesta con DeepSeek:", e)
+        raise HTTPException(status_code=500, detail="Error al consultar DeepSeek")
+
+    return parsed
