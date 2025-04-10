@@ -229,3 +229,130 @@ def suggest_category(product_id: int, db: Session = Depends(get_db)):
 @app.get("/retailers/", response_model=list[schemas.RetailerBase])
 def get_retailers(db: Session = Depends(get_db)):
     return db.query(models.Retailer).order_by(models.Retailer.name.asc()).all()
+
+from sqlalchemy import distinct
+
+@app.get("/tweets/suggestions")
+def get_tweet_suggestions(db: Session = Depends(get_db)):
+    from collections import defaultdict
+    import os
+    import httpx
+    import json
+    import random
+    import re
+
+    # Paso 1: obtener productos con título repetido entre retailers
+    subquery_random_titles = (
+        db.query(models.Product.title)
+        .group_by(models.Product.title)
+        .having(func.count(distinct(models.Product.retailer_id)) > 1)
+        .order_by(func.random())
+        .limit(20)
+        .subquery()
+    )
+
+    productos = (
+        db.query(models.Product)
+        .join(subquery_random_titles, models.Product.title == subquery_random_titles.c.title)
+        .options(joinedload(models.Product.retailer))
+        .order_by(models.Product.title.asc(), models.Product.final_price.asc())
+        .all()
+    )
+
+    grouped = defaultdict(list)
+    for p in productos:
+        grouped[p.title].append(p)
+
+    casos = []
+    for title, items in grouped.items():
+        if len(items) < 2:
+            continue
+        sorted_items = sorted(items, key=lambda x: x.final_price)
+        barato = sorted_items[0]
+        caro = sorted_items[-1]
+        diff = caro.final_price - barato.final_price
+        if diff < 5000:
+            continue
+
+        casos.append({
+            "case": len(casos)+1,
+            "title": title,
+            "retailer_barato": barato.retailer.name,
+            "precio_barato": int(barato.final_price),
+            "retailer_caro": caro.retailer.name,
+            "precio_caro": int(caro.final_price),
+            "diff": int(diff)
+        })
+
+        if len(casos) >= 5:
+            break
+
+    if not casos:
+        return []
+
+    # Paso 2: crear prompt para DeepSeek
+    prompt = (
+        "Generá 3 tweets creativos por cada uno de los siguientes casos de arbitraje. Respondé en formato JSON con el siguiente formato:\n\n"
+        "[\n"
+        "  {\n"
+        "    \"case\": 1,\n"
+        "    \"tweets\": [\"tweet1\", \"tweet2\", \"tweet3\"]\n"
+        "  },\n"
+        "  ...\n"
+        "]\n\n"
+    )
+
+    for caso in casos:
+        prompt += (
+            f"Caso {caso['case']}:\n"
+            f"Producto: {caso['title']}\n"
+            f"Precio más barato: ${caso['precio_barato']} en {caso['retailer_barato']}\n"
+            f"Precio más caro: ${caso['precio_caro']} en {caso['retailer_caro']}\n"
+            f"Diferencia: ${caso['diff']}\n\n"
+        )
+
+    deepseek_api_key = os.getenv("DEEPSEEK_API_KEY")
+    if not deepseek_api_key:
+        raise HTTPException(status_code=500, detail="DEEPSEEK_API_KEY not set")
+
+    try:
+        response = httpx.post(
+            "https://api.deepseek.com/v1/chat/completions",
+            headers={
+                "Authorization": f"Bearer {deepseek_api_key}",
+                "Content-Type": "application/json"
+            },
+            json={
+                "model": "deepseek-chat",
+                "messages": [
+                    { "role": "system", "content": "Sos un community manager experto en arbitraje de productos." },
+                    { "role": "user", "content": prompt }
+                ],
+                "temperature": 0.7
+            },
+            timeout=60.0
+        )
+        response.raise_for_status()
+        raw = response.json()["choices"][0]["message"]["content"]
+
+        # Eliminar backticks si vienen
+        raw = re.sub(r"^```json\s*", "", raw)
+        raw = re.sub(r"\s*```$", "", raw)
+
+        parsed = json.loads(raw)
+
+    except Exception as e:
+        print("❌ Error al consultar DeepSeek:", e)
+        raise HTTPException(status_code=500, detail="Error al consultar DeepSeek")
+
+    # Paso 3: combinar metadata del caso con tweets
+    resultados = []
+    for caso in casos:
+        match = next((x for x in parsed if x["case"] == caso["case"]), None)
+        if match and "tweets" in match:
+            resultados.append({
+                **caso,
+                "tweets": match["tweets"]
+            })
+
+    return resultados

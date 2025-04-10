@@ -10,6 +10,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           <Link href="/admin" className="block text-sm hover:underline">Dashboard</Link>
           <Link href="/admin/categories" className="block text-sm hover:underline">Retailer Categories</Link>
           <Link href="/admin/products" className="block text-sm hover:underline">Productos sin Categoría</Link>
+          <Link href="/admin/tweets" className="block text-sm hover:underline">Sugerencias de Tweets</Link>
         </nav>
       </aside>
       <main className="flex-1 p-6">{children}</main>
