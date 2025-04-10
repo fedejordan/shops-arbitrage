@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Float, DateTime, ForeignKey
+from sqlalchemy import Column, Integer, Numeric, String, Float, DateTime, ForeignKey, func
 from database import Base
 from sqlalchemy.orm import relationship, foreign
 
@@ -18,6 +18,7 @@ class Product(Base):
     retailer = relationship("Retailer", back_populates="products")
     category_id = Column(Integer, ForeignKey("categories.id"), nullable=True)
     category_rel = relationship("Category", backref="products")
+    historical_prices = relationship("HistoricalPrice", back_populates="product")
 
     @property
     def category_name(self):
@@ -45,3 +46,14 @@ class RetailerCategory(Base):
 
     retailer = relationship("Retailer")
     category = relationship("Category")
+
+class HistoricalPrice(Base):
+    __tablename__ = "historical_prices"
+
+    id = Column(Integer, primary_key=True, index=True)
+    product_id = Column(Integer, ForeignKey("products.id"))
+    original_price = Column(Numeric)
+    final_price = Column(Numeric)
+    date_recorded = Column(DateTime, default=func.now())
+
+    product = relationship("Product", back_populates="historical_prices")
