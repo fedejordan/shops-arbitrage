@@ -282,7 +282,8 @@ def get_tweet_suggestions(db: Session = Depends(get_db)):
             "precio_barato": int(barato.final_price),
             "retailer_caro": caro.retailer.name,
             "precio_caro": int(caro.final_price),
-            "diff": int(diff)
+            "diff": int(diff),
+            "url": barato.url  # ✅ agregar la URL del más barato
         })
 
         if len(casos) >= 3:
@@ -295,6 +296,7 @@ def get_tweet_suggestions(db: Session = Depends(get_db)):
     prompt = (
         "Generá 3 tweets creativos por cada uno de los siguientes casos de arbitraje de productos. "
         "En cada tweet incluí una mención natural a nuestra plataforma 'TuPrecioIdeal' como fuente o herramienta que ayudó a encontrar la diferencia de precios. "
+        "Incluí también el siguiente link del producto más barato al final del tweet para que la gente pueda verlo. "
         "Respondé en formato JSON con el siguiente formato:\n\n"
         "[\n"
         "  {\n"
@@ -311,7 +313,8 @@ def get_tweet_suggestions(db: Session = Depends(get_db)):
             f"Producto: {caso['title']}\n"
             f"Precio más barato: ${caso['precio_barato']} en {caso['retailer_barato']}\n"
             f"Precio más caro: ${caso['precio_caro']} en {caso['retailer_caro']}\n"
-            f"Diferencia: ${caso['diff']}\n\n"
+            f"Diferencia: ${caso['diff']}\n"
+            f"Link: {caso['url']}\n\n"  # ✅ incluir el link en el prompt
         )
 
     deepseek_api_key = os.getenv("DEEPSEEK_API_KEY")
@@ -360,6 +363,7 @@ def get_tweet_suggestions(db: Session = Depends(get_db)):
 
     return resultados
 
+
 @app.get("/tweets/discounts")
 def get_discount_tweets(db: Session = Depends(get_db)):
     import os
@@ -389,6 +393,7 @@ def get_discount_tweets(db: Session = Depends(get_db)):
         "Generá 2 tweets creativos por cada uno de los siguientes productos que tienen grandes descuentos. "
         "Incluí una mención a nuestra plataforma 'TuPrecioIdeal' en cada tweet, como si fuera la fuente que detectó la oferta. "
         "Usá estilo de redes sociales, emojis, y mostrá el precio original, precio final y porcentaje de descuento. "
+        "Incluí el link al producto al final del tweet para que la gente pueda aprovecharlo. "
         "Respondé en formato JSON con este formato:\n\n"
         "[\n"
         "  { \"title\": \"...\", \"tweets\": [\"...\", \"...\"] },\n"
@@ -404,14 +409,16 @@ def get_discount_tweets(db: Session = Depends(get_db)):
             f"Retailer: {p.retailer.name}\n"
             f"Precio original: ${int(p.original_price)}\n"
             f"Precio final: ${int(p.final_price)}\n"
-            f"Descuento: {descuento}%\n\n"
+            f"Descuento: {descuento}%\n"
+            f"URL: {p.url}\n\n"  # ✅ Agregado
         )
         productos_data.append({
             "title": p.title,
             "retailer": p.retailer.name,
             "original_price": int(p.original_price),
             "final_price": int(p.final_price),
-            "discount_pct": descuento
+            "discount_pct": descuento,
+            "url": p.url  # ✅ Agregado
         })
 
     try:
@@ -460,6 +467,7 @@ def get_discount_tweets(db: Session = Depends(get_db)):
 
     return resultados
 
+
 @app.get("/tweets/top-discounts")
 def get_top_discount_tweets(db: Session = Depends(get_db)):
     import os
@@ -487,14 +495,16 @@ def get_top_discount_tweets(db: Session = Depends(get_db)):
     prompt = (
         "Generá 2 variantes de tweets creativos que comuniquen el top 3 de productos con mayores descuentos detectados hoy. "
         "Incluí los nombres de los productos, el porcentaje de descuento y mencioná a 'TuPrecioIdeal' como fuente. "
-        "Usá emojis y lenguaje de redes sociales. Respondé en formato JSON así:\n\n"
+        "Usá emojis y lenguaje de redes sociales. "
+        "Incluí también el link de cada producto para que los usuarios puedan acceder fácilmente. "
+        "Respondé en formato JSON así:\n\n"
         "[\"Tweet 1\", \"Tweet 2\"]\n\n"
         "Productos:\n"
     )
 
     for p in productos:
         pct = round(100 * (1 - float(p.final_price) / float(p.original_price)))
-        prompt += f"- {p.title} -{pct}%\n"
+        prompt += f"- {p.title} -{pct}%\n  URL: {p.url}\n"
 
     deepseek_api_key = os.getenv("DEEPSEEK_API_KEY")
     if not deepseek_api_key:
@@ -529,16 +539,16 @@ def get_top_discount_tweets(db: Session = Depends(get_db)):
 
     return parsed
 
+
 @app.get("/tweets/historical-difference")
 def get_biggest_historical_drop_tweet(db: Session = Depends(get_db)):
     import os
     import httpx
     import json
     import re
-
-    # Encontrar el producto con mayor diferencia absoluta histórica (original - final)
     from sqlalchemy import desc
 
+    # Encontrar el producto con mayor diferencia absoluta histórica (original - final)
     best = (
         db.query(
             models.HistoricalPrice,
@@ -571,6 +581,7 @@ def get_biggest_historical_drop_tweet(db: Session = Depends(get_db)):
     prompt = (
         "Generá 3 tweets creativos sobre un producto con el mayor descuento histórico registrado en nuestra base de datos. "
         "Mencioná a 'TuPrecioIdeal' como la fuente que lo detectó. Incluí emojis, el precio original, precio actual y el porcentaje de ahorro. "
+        "Agregá también el link del producto para que los usuarios puedan verlo. "
         "Respondé en JSON con formato: {\"tweets\": [\"...\", \"...\", \"...\"]}\n\n"
         f"Producto: {title}\n"
         f"Retailer: {retailer}\n"
@@ -578,6 +589,7 @@ def get_biggest_historical_drop_tweet(db: Session = Depends(get_db)):
         f"Precio más bajo registrado: ${int(h.final_price)}\n"
         f"Diferencia: ${diff}\n"
         f"Descuento: {pct}%\n"
+        f"URL: {url}\n"  # ✅ Agregado
     )
 
     try:
@@ -620,8 +632,10 @@ def get_biggest_historical_drop_tweet(db: Session = Depends(get_db)):
         "final_price": int(h.final_price),
         "diff": diff,
         "discount_pct": pct,
+        "url": url,  # ✅ Agregado a la respuesta por si lo querés mostrar también en frontend
         "tweets": parsed["tweets"]
     }
+
 
 @app.get("/tweets/weekly-drops")
 def get_weekly_drop_tweets(db: Session = Depends(get_db)):
@@ -669,6 +683,7 @@ def get_weekly_drop_tweets(db: Session = Depends(get_db)):
         db.query(
             models.Product.title,
             models.Product.retailer_id,
+            models.Product.url,  # ✅ Agregamos la URL
             old_prices.c.final_price.label("old_price"),
             new_prices.c.final_price.label("new_price"),
             (old_prices.c.final_price - new_prices.c.final_price).label("diff"),
@@ -689,7 +704,7 @@ def get_weekly_drop_tweets(db: Session = Depends(get_db)):
     prompt = (
         "Generá 2 tweets creativos por cada uno de los siguientes productos que bajaron de precio esta semana. "
         "Incluí el precio anterior, el nuevo, y cuánto bajó. Mencioná a 'TuPrecioIdeal' como la fuente. "
-        "Usá emojis y lenguaje de redes. Respondé en JSON:\n\n"
+        "Usá emojis y lenguaje de redes. Agregá el link del producto al final de cada tweet. Respondé en JSON:\n\n"
         "[ { \"title\": \"...\", \"tweets\": [\"...\", \"...\"] }, ... ]\n\n"
     )
 
@@ -700,14 +715,16 @@ def get_weekly_drop_tweets(db: Session = Depends(get_db)):
             f"Retailer: {d.retailer}\n"
             f"Precio antes: ${int(d.old_price)}\n"
             f"Precio ahora: ${int(d.new_price)}\n"
-            f"Bajada: ${int(d.diff)}\n\n"
+            f"Bajada: ${int(d.diff)}\n"
+            f"URL: {d.url}\n\n"  # ✅ URL incluida en el prompt
         )
         result_data.append({
             "title": d.title,
             "retailer": d.retailer,
             "old_price": int(d.old_price),
             "new_price": int(d.new_price),
-            "diff": int(d.diff)
+            "diff": int(d.diff),
+            "url": d.url  # ✅ también la mantenemos en la respuesta
         })
 
     try:
