@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, Numeric, String, Float, DateTime, ForeignKey, func
+from sqlalchemy import Column, Integer, Numeric, String, Float, DateTime, ForeignKey, func, Text
 from database import Base
 from sqlalchemy.orm import relationship, foreign
 
@@ -19,6 +19,7 @@ class Product(Base):
     category_id = Column(Integer, ForeignKey("categories.id"), nullable=True)
     category_rel = relationship("Category", backref="products")
     historical_prices = relationship("HistoricalPrice", back_populates="product")
+    searchable_term = Column(Text)
 
     @property
     def category_name(self):
