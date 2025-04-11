@@ -33,6 +33,8 @@ const [educationalTweets, setEducationalTweets] = useState<string[]>([])
   const [view, setView] = useState<"arbitrajes" | "descuentos" | "top" | "historic" | "weekly" | "educational" | "polls">("arbitrajes")
   const [loadingPolls, setLoadingPolls] = useState(false)
   const [pollTweets, setPollTweets] = useState<string[]>([])
+  const [tweetingId, setTweetingId] = useState<string | null>(null)
+
   
   const generatePolls = async () => {
     setLoadingPolls(true)
@@ -168,10 +170,32 @@ const [educationalTweets, setEducationalTweets] = useState<string[]>([])
     }
   }
 
-  const handleTweet = (text: string) => {
-    const url = `https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}`
-    window.open(url, "_blank")
+  const handleTweet = async (text: string, id: string) => {
+    const url = process.env.NEXT_PUBLIC_API_BASE_URL + "/tweets/post"
+    setTweetingId(id)
+    try {
+      const res = await fetch(url, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ text }),
+      })
+  
+      if (!res.ok) {
+        const err = await res.json()
+        throw new Error(err.detail || "Error desconocido")
+      }
+  
+      alert("✅ Tweet publicado correctamente desde TuPrecioIdeal.")
+    } catch (err: any) {
+      console.error("Error al postear:", err)
+      alert("❌ Error al postear el tweet: " + err.message)
+    } finally {
+      setTweetingId(null)
+    }
   }
+  
 
   return (
     <div className="p-6 space-y-6">
@@ -232,9 +256,16 @@ const [educationalTweets, setEducationalTweets] = useState<string[]>([])
                     <Button
                       variant="default"
                       size="sm"
-                      onClick={() => handleTweet(text)}
+                      disabled={tweetingId === uid}
+                      onClick={() => handleTweet(text, uid)}
                     >
-                      <Twitter className="w-4 h-4 mr-1" /> Tweetear ahora
+                      {tweetingId === uid ? (
+                        <>⏳ Posteando...</>
+                      ) : (
+                        <>
+                          <Twitter className="w-4 h-4 mr-1" /> Tweetear ahora
+                        </>
+                      )}
                     </Button>
                   </div>
                 </div>
@@ -261,8 +292,19 @@ const [educationalTweets, setEducationalTweets] = useState<string[]>([])
                     <Button variant="outline" size="sm" onClick={() => handleCopy(uid, tweet)}>
                         {copiedId === uid ? <><Check className="w-4 h-4 mr-1 text-green-500" /> Copiado</> : <><Clipboard className="w-4 h-4 mr-1" /> Copiar</>}
                     </Button>
-                    <Button variant="default" size="sm" onClick={() => handleTweet(tweet)}>
-                        <Twitter className="w-4 h-4 mr-1" /> Tweetear ahora
+                    <Button
+                      variant="default"
+                      size="sm"
+                      disabled={tweetingId === uid}
+                      onClick={() => handleTweet(tweet, uid)}
+                    >
+                      {tweetingId === uid ? (
+                        <>⏳ Posteando...</>
+                      ) : (
+                        <>
+                          <Twitter className="w-4 h-4 mr-1" /> Tweetear ahora
+                        </>
+                      )}
                     </Button>
                     </div>
                 </div>
@@ -281,9 +323,20 @@ const [educationalTweets, setEducationalTweets] = useState<string[]>([])
                 <Button variant="outline" size="sm" onClick={() => handleCopy(uid, text)}>
                     {copiedId === uid ? <><Check className="w-4 h-4 mr-1 text-green-500" /> Copiado</> : <><Clipboard className="w-4 h-4 mr-1" /> Copiar</>}
                 </Button>
-                <Button variant="default" size="sm" onClick={() => handleTweet(text)}>
-                    <Twitter className="w-4 h-4 mr-1" /> Tweetear ahora
-                </Button>
+                <Button
+                      variant="default"
+                      size="sm"
+                      disabled={tweetingId === uid}
+                      onClick={() => handleTweet(text, uid)}
+                    >
+                      {tweetingId === uid ? (
+                        <>⏳ Posteando...</>
+                      ) : (
+                        <>
+                          <Twitter className="w-4 h-4 mr-1" /> Tweetear ahora
+                        </>
+                      )}
+                    </Button>
                 </div>
             </CardContent>
             </Card>
@@ -308,8 +361,19 @@ const [educationalTweets, setEducationalTweets] = useState<string[]>([])
                     <Button variant="outline" size="sm" onClick={() => handleCopy(uid, text)}>
                         {copiedId === uid ? <><Check className="w-4 h-4 mr-1 text-green-500" /> Copiado</> : <><Clipboard className="w-4 h-4 mr-1" /> Copiar</>}
                     </Button>
-                    <Button variant="default" size="sm" onClick={() => handleTweet(text)}>
-                        <Twitter className="w-4 h-4 mr-1" /> Tweetear ahora
+                    <Button
+                      variant="default"
+                      size="sm"
+                      disabled={tweetingId === uid}
+                      onClick={() => handleTweet(text, uid)}
+                    >
+                      {tweetingId === uid ? (
+                        <>⏳ Posteando...</>
+                      ) : (
+                        <>
+                          <Twitter className="w-4 h-4 mr-1" /> Tweetear ahora
+                        </>
+                      )}
                     </Button>
                     </div>
                 </div>
@@ -337,8 +401,19 @@ const [educationalTweets, setEducationalTweets] = useState<string[]>([])
                     <Button variant="outline" size="sm" onClick={() => handleCopy(uid, tweet)}>
                         {copiedId === uid ? <><Check className="w-4 h-4 mr-1 text-green-500" /> Copiado</> : <><Clipboard className="w-4 h-4 mr-1" /> Copiar</>}
                     </Button>
-                    <Button variant="default" size="sm" onClick={() => handleTweet(tweet)}>
-                        <Twitter className="w-4 h-4 mr-1" /> Tweetear ahora
+                    <Button
+                      variant="default"
+                      size="sm"
+                      disabled={tweetingId === uid}
+                      onClick={() => handleTweet(text, uid)}
+                    >
+                      {tweetingId === uid ? (
+                        <>⏳ Posteando...</>
+                      ) : (
+                        <>
+                          <Twitter className="w-4 h-4 mr-1" /> Tweetear ahora
+                        </>
+                      )}
                     </Button>
                     </div>
                 </div>
@@ -358,9 +433,20 @@ const [educationalTweets, setEducationalTweets] = useState<string[]>([])
                 <Button variant="outline" size="sm" onClick={() => handleCopy(uid, text)}>
                     {copiedId === uid ? <><Check className="w-4 h-4 mr-1 text-green-500" /> Copiado</> : <><Clipboard className="w-4 h-4 mr-1" /> Copiar</>}
                 </Button>
-                <Button variant="default" size="sm" onClick={() => handleTweet(text)}>
-                    <Twitter className="w-4 h-4 mr-1" /> Tweetear ahora
-                </Button>
+                <Button
+                      variant="default"
+                      size="sm"
+                      disabled={tweetingId === uid}
+                      onClick={() => handleTweet(text, uid)}
+                    >
+                      {tweetingId === uid ? (
+                        <>⏳ Posteando...</>
+                      ) : (
+                        <>
+                          <Twitter className="w-4 h-4 mr-1" /> Tweetear ahora
+                        </>
+                      )}
+                    </Button>
                 </div>
             </CardContent>
             </Card>
@@ -376,8 +462,19 @@ const [educationalTweets, setEducationalTweets] = useState<string[]>([])
                     <Button variant="outline" size="sm" onClick={() => handleCopy(uid, text)}>
                         {copiedId === uid ? <><Check className="w-4 h-4 mr-1 text-green-500" /> Copiado</> : <><Clipboard className="w-4 h-4 mr-1" /> Copiar</>}
                     </Button>
-                    <Button variant="default" size="sm" onClick={() => handleTweet(text)}>
-                        <Twitter className="w-4 h-4 mr-1" /> Tweetear ahora
+                    <Button
+                      variant="default"
+                      size="sm"
+                      disabled={tweetingId === uid}
+                      onClick={() => handleTweet(text, uid)}
+                    >
+                      {tweetingId === uid ? (
+                        <>⏳ Posteando...</>
+                      ) : (
+                        <>
+                          <Twitter className="w-4 h-4 mr-1" /> Tweetear ahora
+                        </>
+                      )}
                     </Button>
                     </div>
                 </CardContent>

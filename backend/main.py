@@ -281,7 +281,7 @@ def get_tweet_suggestions(db: Session = Depends(get_db)):
         grouped[key].append(p)
 
     casos = []
-    for title, items in grouped.items():
+    for match_key, items in grouped.items():
         if len(items) < 2:
             continue
         sorted_items = sorted(items, key=lambda x: x.final_price)
@@ -293,8 +293,8 @@ def get_tweet_suggestions(db: Session = Depends(get_db)):
 
         casos.append({
             "case": len(casos)+1,
-            "match_key": key,
-            "title": title,
+            "match_key": match_key,
+            "title": barato.title,
             "retailer_barato": barato.retailer.name,
             "precio_barato": int(barato.final_price),
             "retailer_caro": caro.retailer.name,
@@ -911,3 +911,37 @@ def get_poll_tweet_ideas(db: Session = Depends(get_db)):
         raise HTTPException(status_code=500, detail="Error al consultar DeepSeek")
 
     return parsed
+
+@app.post("/tweets/post")
+def post_tweet(payload: dict):
+    import os
+    from requests_oauthlib import OAuth1Session
+
+    text = payload.get("text")
+    if not text:
+        raise HTTPException(status_code=400, detail="Falta el texto del tweet")
+
+    consumer_key = os.getenv("X_API_KEY")
+    consumer_secret = os.getenv("X_API_KEY_SECRET")
+    access_token = os.getenv("X_ACCESS_TOKEN")
+    access_token_secret = os.getenv("X_ACCESS_TOKEN_SECRET")
+
+    if not all([consumer_key, consumer_secret, access_token, access_token_secret]):
+        raise HTTPException(status_code=500, detail="Faltan credenciales de X")
+
+    oauth = OAuth1Session(
+        consumer_key,
+        client_secret=consumer_secret,
+        resource_owner_key=access_token,
+        resource_owner_secret=access_token_secret,
+    )
+
+    response = oauth.post(
+        "https://api.twitter.com/2/tweets",
+        json={"text": text},
+    )
+
+    if response.status_code != 201:
+        raise HTTPException(status_code=response.status_code, detail=response.text)
+
+    return {"message": "Tweet publicado con éxito"}
