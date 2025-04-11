@@ -244,8 +244,9 @@ def get_tweet_suggestions(db: Session = Depends(get_db)):
 
     # Paso 1: obtener productos con título repetido entre retailers
     subquery_random_titles = (
-        db.query(models.Product.title)
-        .group_by(models.Product.title)
+        db.query(models.Product.searchable_term)
+        .filter(models.Product.searchable_term != None)
+        .group_by(models.Product.searchable_term)
         .having(func.count(distinct(models.Product.retailer_id)) > 1)
         .order_by(func.random())
         .limit(20)
@@ -254,7 +255,7 @@ def get_tweet_suggestions(db: Session = Depends(get_db)):
 
     productos = (
         db.query(models.Product)
-        .join(subquery_random_titles, models.Product.title == subquery_random_titles.c.title)
+        .join(subquery_random_titles, models.Product.searchable_term == subquery_random_titles.c.searchable_term)
         .options(joinedload(models.Product.retailer))
         .order_by(models.Product.title.asc(), models.Product.final_price.asc())
         .all()
@@ -262,7 +263,7 @@ def get_tweet_suggestions(db: Session = Depends(get_db)):
 
     grouped = defaultdict(list)
     for p in productos:
-        grouped[p.title].append(p)
+        grouped[p.searchable_term].append(p)
 
     casos = []
     for title, items in grouped.items():
