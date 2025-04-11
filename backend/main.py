@@ -242,6 +242,10 @@ def get_tweet_suggestions(db: Session = Depends(get_db)):
     import random
     import re
 
+    # SELECT title AS match_key
+    # FROM products
+    # GROUP BY title
+    # HAVING COUNT(DISTINCT retailer_id) > 1;
      # Subquery 1: títulos exactos repetidos entre retailers
     subquery_titles = (
         db.query(models.Product.title.label("match_key"))
@@ -249,6 +253,7 @@ def get_tweet_suggestions(db: Session = Depends(get_db)):
         .having(func.count(distinct(models.Product.retailer_id)) > 1)
     )
 
+    # select searchable_term, count(*) from products where searchable_term is not null group by searchable_term having count(distinct(retailer_id)) > 1
     # Subquery 2: searchable_terms repetidos entre retailers
     subquery_terms = (
         db.query(models.Product.searchable_term.label("match_key"))
@@ -312,7 +317,7 @@ def get_tweet_suggestions(db: Session = Depends(get_db)):
     # Paso 2: crear prompt para DeepSeek
     prompt = (
         "Generá 3 tweets creativos por cada uno de los siguientes casos de arbitraje de productos. "
-        "En cada tweet incluí una mención natural a nuestra plataforma 'TuPrecioIdeal' como fuente o herramienta que ayudó a encontrar la diferencia de precios. "
+        "En cada tweet incluí una mención natural a nuestra plataforma 'TuPrecioIdeal' como fuente o herramienta que ayudó a encontrar la diferencia de precios. La cuenta de X es @TuPrecioIdealAr"
         "Incluí también el siguiente link del producto más barato al final del tweet para que la gente pueda verlo. "
         "Respondé en formato JSON con el siguiente formato:\n\n"
         "[\n"
@@ -412,7 +417,7 @@ def get_discount_tweets(db: Session = Depends(get_db)):
 
     prompt = (
         "Generá 2 tweets creativos por cada uno de los siguientes productos que tienen grandes descuentos. "
-        "Incluí una mención a nuestra plataforma 'TuPrecioIdeal' en cada tweet, como si fuera la fuente que detectó la oferta. "
+        "Incluí una mención a nuestra plataforma 'TuPrecioIdeal' en cada tweet, como si fuera la fuente que detectó la oferta. La cuenta de X es @TuPrecioIdealAr"
         "Usá estilo de redes sociales, emojis, y mostrá el precio original, precio final y porcentaje de descuento. "
         "Incluí el link al producto al final del tweet para que la gente pueda aprovecharlo. "
         "Respondé en formato JSON con este formato:\n\n"
@@ -515,7 +520,7 @@ def get_top_discount_tweets(db: Session = Depends(get_db)):
 
     prompt = (
         "Generá 2 variantes de tweets creativos que comuniquen el top 3 de productos con mayores descuentos detectados hoy. "
-        "Incluí los nombres de los productos, el porcentaje de descuento y mencioná a 'TuPrecioIdeal' como fuente. "
+        "Incluí los nombres de los productos, el porcentaje de descuento y mencioná a 'TuPrecioIdeal' como fuente. La cuenta de X es @TuPrecioIdealAr"
         "Usá emojis y lenguaje de redes sociales. "
         "Incluí también el link de cada producto para que los usuarios puedan acceder fácilmente. "
         "Respondé en formato JSON así:\n\n"
@@ -601,7 +606,7 @@ def get_biggest_historical_drop_tweet(db: Session = Depends(get_db)):
 
     prompt = (
         "Generá 3 tweets creativos sobre un producto con el mayor descuento histórico registrado en nuestra base de datos. "
-        "Mencioná a 'TuPrecioIdeal' como la fuente que lo detectó. Incluí emojis, el precio original, precio actual y el porcentaje de ahorro. "
+        "Mencioná a 'TuPrecioIdeal' como la fuente que lo detectó. Incluí emojis, el precio original, precio actual y el porcentaje de ahorro. La cuenta de X es @TuPrecioIdealAr"
         "Agregá también el link del producto para que los usuarios puedan verlo. "
         "Respondé en JSON con formato: {\"tweets\": [\"...\", \"...\", \"...\"]}\n\n"
         f"Producto: {title}\n"
@@ -724,7 +729,7 @@ def get_weekly_drop_tweets(db: Session = Depends(get_db)):
 
     prompt = (
         "Generá 2 tweets creativos por cada uno de los siguientes productos que bajaron de precio esta semana. "
-        "Incluí el precio anterior, el nuevo, y cuánto bajó. Mencioná a 'TuPrecioIdeal' como la fuente. "
+        "Incluí el precio anterior, el nuevo, y cuánto bajó. Mencioná a 'TuPrecioIdeal' como la fuente. La cuenta de X es @TuPrecioIdealAr"
         "Usá emojis y lenguaje de redes. Agregá el link del producto al final de cada tweet. Respondé en JSON:\n\n"
         "[ { \"title\": \"...\", \"tweets\": [\"...\", \"...\"] }, ... ]\n\n"
     )
@@ -802,7 +807,7 @@ def get_educational_tweets(db: Session = Depends(get_db)):
     prompt = (
         "Generá 2 tweets educativos sobre el concepto de arbitraje de precios entre retailers. "
         "El objetivo es que el usuario aprenda que si un producto está más barato en otro retailer, puede aprovechar la diferencia. "
-        "Mencioná 'TuPrecioIdeal' como fuente que ayudó a detectar la diferencia. Usá tono claro, amigable, y si querés emojis. "
+        "Mencioná 'TuPrecioIdeal' como fuente que ayudó a detectar la diferencia. Usá tono claro, amigable, y si querés emojis. La cuenta de X es @TuPrecioIdealAr"
         "Respondé en formato JSON como una lista de tweets:\n\n"
         "[\"tweet 1\", \"tweet 2\"]\n\n"
     )
@@ -867,7 +872,7 @@ def get_poll_tweet_ideas(db: Session = Depends(get_db)):
     opciones = []
     prompt = (
         "Generá 2 variantes de tweets en formato encuesta (poll) con los siguientes productos, "
-        "donde se invite al público a elegir cuál aprovecharían, mencionando los precios y la plataforma 'TuPrecioIdeal' como fuente. "
+        "donde se invite al público a elegir cuál aprovecharían, mencionando los precios y la plataforma 'TuPrecioIdeal' como fuente. La cuenta de X es @TuPrecioIdealAr"
         "Respondé en JSON como lista de strings:\n\n"
         "[\"Tweet 1\", \"Tweet 2\"]\n\n"
         "Productos:\n"
