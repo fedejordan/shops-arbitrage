@@ -242,28 +242,43 @@ def get_tweet_suggestions(db: Session = Depends(get_db)):
     import random
     import re
 
-    # Paso 1: obtener productos con título repetido entre retailers
-    subquery_random_titles = (
-        db.query(models.Product.searchable_term)
+     # Subquery 1: títulos exactos repetidos entre retailers
+    subquery_titles = (
+        db.query(models.Product.title.label("match_key"))
+        .group_by(models.Product.title)
+        .having(func.count(distinct(models.Product.retailer_id)) > 1)
+    )
+
+    # Subquery 2: searchable_terms repetidos entre retailers
+    subquery_terms = (
+        db.query(models.Product.searchable_term.label("match_key"))
         .filter(models.Product.searchable_term != None)
         .group_by(models.Product.searchable_term)
         .having(func.count(distinct(models.Product.retailer_id)) > 1)
+    )
+
+    # Unión de ambas subqueries (simulada en Python ya que SQLAlchemy no lo hace directo)
+    union_keys = (
+        subquery_titles.union(subquery_terms)
         .order_by(func.random())
         .limit(20)
         .subquery()
     )
 
+     # Traer productos que coincidan por match_key
     productos = (
         db.query(models.Product)
-        .join(subquery_random_titles, models.Product.searchable_term == subquery_random_titles.c.searchable_term)
+        .join(union_keys, (models.Product.title == union_keys.c.match_key) | (models.Product.searchable_term == union_keys.c.match_key))
         .options(joinedload(models.Product.retailer))
-        .order_by(models.Product.title.asc(), models.Product.final_price.asc())
+        .order_by(models.Product.searchable_term.asc().nulls_last(), models.Product.title.asc(), models.Product.final_price.asc())
         .all()
     )
 
+    # Agrupar por match_key (title o searchable_term)
     grouped = defaultdict(list)
     for p in productos:
-        grouped[p.searchable_term].append(p)
+        key = p.searchable_term or p.title
+        grouped[key].append(p)
 
     casos = []
     for title, items in grouped.items():
@@ -278,6 +293,7 @@ def get_tweet_suggestions(db: Session = Depends(get_db)):
 
         casos.append({
             "case": len(casos)+1,
+            "match_key": key,
             "title": title,
             "retailer_barato": barato.retailer.name,
             "precio_barato": int(barato.final_price),
@@ -318,6 +334,8 @@ def get_tweet_suggestions(db: Session = Depends(get_db)):
             f"Link: {caso['url']}\n\n"  # ✅ incluir el link en el prompt
         )
 
+    print("Prompt para DeepSeek:", prompt)
+
     deepseek_api_key = os.getenv("DEEPSEEK_API_KEY")
     if not deepseek_api_key:
         raise HTTPException(status_code=500, detail="DEEPSEEK_API_KEY not set")
@@ -341,6 +359,8 @@ def get_tweet_suggestions(db: Session = Depends(get_db)):
         )
         response.raise_for_status()
         raw = response.json()["choices"][0]["message"]["content"]
+
+        print("Respuesta de DeepSeek:", raw)
 
         # Eliminar backticks si vienen
         raw = re.sub(r"^```json\s*", "", raw)
