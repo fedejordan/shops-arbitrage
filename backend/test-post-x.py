@@ -1,20 +1,7 @@
-import tweepy
 import os
 from dotenv import load_dotenv
 
 load_dotenv()
-
-# Autenticación
-# client = tweepy.Client(
-#     consumer_key="TU_API_KEY",
-#     consumer_secret="TU_API_SECRET",
-#     access_token="TU_ACCESS_TOKEN",
-#     access_token_secret="TU_ACCESS_TOKEN_SECRET"
-# )
-
-# # Postear un tweet
-# response = client.create_tweet(text="Hola mundo desde la API de Twitter 🚀")
-# print("Tweet publicado:", response.data["id"])
 
 from requests_oauthlib import OAuth1Session
 
