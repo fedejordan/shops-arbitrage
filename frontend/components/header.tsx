@@ -1,3 +1,5 @@
+// components/header.tsx
+
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Twitter } from "lucide-react"
@@ -18,6 +20,9 @@ export function Header() {
           </Button>
           <Button variant="ghost" asChild>
             <Link href="/search">Buscador</Link>
+          </Button>
+          <Button variant="ghost" asChild>
+            <Link href="/reports">Reportes</Link>
           </Button>
           <Button variant="ghost" asChild>
             <Link href="https://twitter.com/TuPrecioIdealAr" target="_blank">
