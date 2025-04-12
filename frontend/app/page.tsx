@@ -53,9 +53,29 @@ export default function Home() {
               text: "Próximamente vas a poder recibir alertas cuando un producto baje de precio.",
             },
             {
+              icon: "📊",
+              title: "Reportes premium",
+              text: "Accedé a análisis exclusivos de precios, oportunidades de reventa y descuentos ocultos.",
+            },
+            {
               icon: "📱",
               title: "App mobile (en camino)",
               text: "Escaneá productos en tiendas físicas y descubrí si hay una mejor oferta online.",
+            },
+            {
+              icon: "⚖️",
+              title: "Comparador de productos",
+              text: "Compará características y precios de productos similares para elegir mejor.",
+            },
+            {
+              icon: "🚨",
+              title: "Alertas para revendedores",
+              text: "Detectá oportunidades de reventa cuando un producto baja fuerte en una tienda.",
+            },
+            {
+              icon: "📈",
+              title: "Tendencias del mercado",
+              text: "Observá qué productos están subiendo o bajando más según el comportamiento histórico.",
             },
           ].map((item) => (
             <div
