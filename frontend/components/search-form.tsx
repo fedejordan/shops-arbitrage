@@ -111,7 +111,7 @@ export function SearchForm() {
       setPage(pageToLoad) // actualizás el estado recién después de éxito
   
       // Actualizar la URL
-      let routerUrl = `/?q=${encodeURIComponent(searchQuery)}&page=${pageToLoad}`
+      let routerUrl = `/search?q=${encodeURIComponent(searchQuery)}&page=${pageToLoad}`
       if (sortBy) routerUrl += `&sort=${sortBy}`
       if (selectedRetailers.length > 0) routerUrl += `&retailers=${selectedRetailers.join(',')}`
       if (selectedCategories.length > 0) routerUrl += `&categories=${selectedCategories.join(',')}`

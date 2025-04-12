@@ -7,10 +7,11 @@ import { Header } from "@/components/header"
 const inter = Inter({ subsets: ["latin"] })
 
 export const metadata: Metadata = {
-  title: "Arbitraje de Productos",
-  description: "Encuentra las mejores ofertas en productos de diferentes tiendas",
-    generator: 'v0.dev'
+  title: "TuPrecioIdeal - Compará precios entre tiendas y ahorrá más",
+  description: "Buscador de productos en Frávega, Garbarino, Musimundo y más. Encontrá el mejor precio con alertas, historial y comparador inteligente.",
+  generator: 'v0.dev',
 }
+
 
 export default function RootLayout({
   children,
