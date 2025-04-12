@@ -1053,3 +1053,49 @@ def get_admin_stats(db: Session = Depends(get_db)):
                 (models.Product.final_price <= 0)
             ).count()
     }
+
+@app.get("/products/{product_id}/similar", response_model=List[schemas.ProductBase])
+def get_similar_products(product_id: int, db: Session = Depends(get_db)):
+    product = (
+        db.query(models.Product)
+        .options(joinedload(models.Product.retailer))
+        .filter(models.Product.id == product_id)
+        .first()
+    )
+    if not product:
+        return []
+
+    similares = []
+
+    # 1. Buscar por searchable_term
+    if product.searchable_term:
+        similares = (
+            db.query(models.Product)
+            .filter(
+                models.Product.searchable_term == product.searchable_term,
+                models.Product.id != product.id
+            )
+            .order_by(models.Product.final_price.asc())
+            .limit(6)
+            .all()
+        )
+
+    # 2. Si no hay suficientes, usar la categoría
+    if len(similares) < 6 and product.category_id is not None:
+        categoria_similares = (
+            db.query(models.Product)
+            .filter(
+                models.Product.category_id == product.category_id,
+                models.Product.id != product.id
+            )
+            .order_by(models.Product.final_price.asc())
+            .limit(6 - len(similares))
+            .all()
+        )
+
+        # Evitar duplicados
+        ids_ya_incluidos = {p.id for p in similares}
+        similares += [p for p in categoria_similares if p.id not in ids_ya_incluidos]
+
+    return similares
+

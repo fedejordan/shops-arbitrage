@@ -23,7 +23,14 @@ export default function ProductPage() {
   const [loading, setLoading] = useState(true)
   const [history, setHistory] = useState([]);
   const [historyLoading, setHistoryLoading] = useState(true);
+  const [similarProducts, setSimilarProducts] = useState([]);
 
+  useEffect(() => {
+    fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/products/${id}/similar`)
+      .then(res => res.json())
+      .then(setSimilarProducts)
+      .catch(err => console.error("Error cargando similares:", err));
+  }, [id]);  
 
   useEffect(() => {
     fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/products/${id}`)
@@ -53,12 +60,14 @@ export default function ProductPage() {
   if (loading || !product) {
     return (
       <div className="p-4 space-y-4">
+        <p className="text-sm text-muted-foreground">⏳ Cargando información del producto...</p>
         <Skeleton className="h-6 w-1/2" />
         <Skeleton className="h-96 w-full" />
         <Skeleton className="h-24 w-full" />
       </div>
     )
   }
+  
 
   let chartData = history.map(h => ({
     date: new Date(h.date).toISOString().split("T")[0], // usamos ISO YYYY-MM-DD para evitar problemas
@@ -151,6 +160,32 @@ export default function ProductPage() {
                 </div>
                 )}
             </div>
+            {similarProducts.length > 0 && (
+                <div className="mt-8">
+                    <h2 className="text-lg font-semibold mb-2">Productos similares</h2>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    {similarProducts.map(p => (
+                        <a
+                        key={p.id}
+                        href={`/products/${p.id}`}
+                        className="border p-4 rounded hover:shadow transition-all"
+                        >
+                        <div className="h-40 relative">
+                            <Image
+                            src={p.image || "/placeholder.svg"}
+                            alt={p.title}
+                            fill
+                            className="object-contain"
+                            />
+                        </div>
+                        <p className="mt-2 font-medium">{p.title}</p>
+                        <p className="text-green-600 font-bold">{formatCurrency(p.final_price)}</p>
+                        </a>
+                    ))}
+                    </div>
+                </div>
+                )}
+
     </div>
   )
 }
