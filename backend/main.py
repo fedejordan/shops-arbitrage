@@ -1014,3 +1014,24 @@ def get_product_with_description(product_id: int, db: Session = Depends(get_db))
         print("❌ DeepSeek falló:", e)
 
     return product
+
+@app.get("/products/{product_id}/history")
+def get_price_history(product_id: int, db: Session = Depends(get_db)):
+    history = (
+        db.query(models.HistoricalPrice)
+        .filter(models.HistoricalPrice.product_id == product_id)
+        .order_by(models.HistoricalPrice.date_recorded.asc())
+        .all()
+    )
+
+    if not history:
+        return []
+
+    return [
+        {
+            "date": h.date_recorded.isoformat(),
+            "original_price": float(h.original_price) if h.original_price else None,
+            "final_price": float(h.final_price)
+        }
+        for h in history
+    ]
