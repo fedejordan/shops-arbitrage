@@ -1035,3 +1035,21 @@ def get_price_history(product_id: int, db: Session = Depends(get_db)):
         }
         for h in history
     ]
+
+@app.get("/admin/stats")
+def get_admin_stats(db: Session = Depends(get_db)):
+    return {
+        "total_products": db.query(models.Product).count(),
+        "uncategorized_products": db.query(models.Product).filter(models.Product.category_id == None).count(),
+        "products_with_history": db.query(models.HistoricalPrice.product_id).distinct().count(),
+        "products_with_searchable_term": db.query(models.Product).filter(models.Product.searchable_term != None).count(),
+        "total_retailers": db.query(models.Retailer).count(),
+        "total_categories": db.query(models.Category).count(),
+        "unmapped_retailer_categories": db.query(models.RetailerCategory).filter(models.RetailerCategory.category_id == None).count(),
+        "products_with_ai_description": db.query(models.Product).filter(models.Product.ai_description != None).count(),
+        "invalid_price_products": db.query(models.Product)
+            .filter(
+                (models.Product.final_price == None) |
+                (models.Product.final_price <= 0)
+            ).count()
+    }
