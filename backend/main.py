@@ -950,3 +950,67 @@ def post_tweet(payload: dict):
         raise HTTPException(status_code=response.status_code, detail=response.text)
 
     return {"message": "Tweet publicado con éxito"}
+
+from bs4 import BeautifulSoup
+
+@app.get("/products/{product_id}", response_model=schemas.ProductBase)
+def get_product_with_description(product_id: int, db: Session = Depends(get_db)):
+    product = (
+        db.query(models.Product)
+        .options(joinedload(models.Product.retailer), joinedload(models.Product.category_rel))
+        .filter(models.Product.id == product_id)
+        .first()
+    )
+
+    if not product:
+        raise HTTPException(status_code=404, detail="Producto no encontrado")
+
+    if product.ai_description:
+        return product
+
+    # Intentar obtener HTML de la página del retailer
+    page_content = ""
+    try:
+        response = httpx.get(product.url, timeout=10.0)
+        response.raise_for_status()
+        soup = BeautifulSoup(response.text, "html.parser")
+        page_content = soup.get_text(separator=" ", strip=True)
+        page_content = page_content[:2000]  # límite de tokens para evitar textos muy largos
+    except Exception as e:
+        print("⚠️ Error obteniendo HTML del producto:", e)
+
+    prompt = (
+        f"Descripción de producto para ecommerce.\n\n"
+        f"Título: {product.title}\n"
+        f"Precio: ${int(product.final_price)}\n"
+        f"Retailer: {product.retailer.name if product.retailer else 'Desconocido'}\n"
+        f"Contenido de la página del producto:\n\n"
+        f"{page_content}\n\n"
+        f"Generá una descripción breve, clara, vendedora y sin repetir el título."
+    )
+
+    try:
+        ds_response = httpx.post(
+            "https://api.deepseek.com/v1/chat/completions",
+            headers={
+                "Authorization": f"Bearer {os.getenv('DEEPSEEK_API_KEY')}",
+                "Content-Type": "application/json"
+            },
+            json={
+                "model": "deepseek-chat",
+                "messages": [
+                    {"role": "system", "content": "Sos un copywriter experto en ecommerce."},
+                    {"role": "user", "content": prompt}
+                ],
+                "temperature": 0.7
+            },
+            timeout=20.0
+        )
+        ds_response.raise_for_status()
+        description = ds_response.json()["choices"][0]["message"]["content"].strip()
+        product.ai_description = description
+        db.commit()
+    except Exception as e:
+        print("❌ DeepSeek falló:", e)
+
+    return product

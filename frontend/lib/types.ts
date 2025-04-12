@@ -11,7 +11,9 @@ export interface Product {
   } | null
   added_date: string
   updated_date: string
+  ai_description?: string | null
 }
+
 
 export interface ProductResponse {
   data: Product[]

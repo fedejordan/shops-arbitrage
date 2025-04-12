@@ -22,6 +22,7 @@ class ProductBase(BaseModel):
     retailer: RetailerBase
     category_id: Optional[int]
     category_name: Optional[str] = None
+    ai_description: Optional[str] = None
 
     class Config:
         from_attributes = True

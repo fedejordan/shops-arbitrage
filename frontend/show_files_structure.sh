@@ -1,1 +1,1 @@
-tree -P "*.tsx" -I "node_modules/
+tree -P "*.tsx" -I "node_modules/"

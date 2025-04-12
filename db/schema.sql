@@ -106,7 +106,9 @@ CREATE TABLE public.products (
     original_price numeric(10,2),
     final_price numeric(10,2),
     retailer_id integer,
-    category_id integer
+    category_id integer,
+    searchable_term text,
+    ai_description text
 );
 
 

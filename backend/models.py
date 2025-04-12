@@ -20,6 +20,8 @@ class Product(Base):
     category_rel = relationship("Category", backref="products")
     historical_prices = relationship("HistoricalPrice", back_populates="product")
     searchable_term = Column(Text)
+    ai_description = Column(Text, nullable=True)
+
 
     @property
     def category_name(self):

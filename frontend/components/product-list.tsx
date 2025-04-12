@@ -4,6 +4,7 @@ import { Badge } from "@/components/ui/badge"
 import type { Product } from "@/lib/types"
 import { formatCurrency, calculateDiscount, timeAgo } from "@/lib/utils"
 import { ExternalLink } from "lucide-react"
+import Link from "next/link"
 
 export function ProductList({ products }: { products: Product[] }) {
   if (products.length === 0) {
@@ -71,14 +72,12 @@ export function ProductList({ products }: { products: Product[] }) {
                       </div>
                     )}
 
-                    <a
-                      href={product.url}
-                      target="_blank"
-                      rel="noopener noreferrer"
+                    <Link
+                      href={`/products/${product.id}`}
                       className="mt-2 inline-flex items-center text-sm text-primary hover:underline"
                     >
-                      Ver producto <ExternalLink className="ml-1 h-3 w-3" />
-                    </a>
+                      Ver detalle <ExternalLink className="ml-1 h-3 w-3" />
+                    </Link>
                   </div>
                 </div>
               </div>
