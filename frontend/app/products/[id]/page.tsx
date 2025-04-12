@@ -60,11 +60,32 @@ export default function ProductPage() {
     )
   }
 
-  const chartData = history.map(h => ({
-    date: new Date(h.date).toLocaleDateString(),
+  let chartData = history.map(h => ({
+    date: new Date(h.date).toISOString().split("T")[0], // usamos ISO YYYY-MM-DD para evitar problemas
     final_price: h.final_price,
     original_price: h.original_price
-  }));  
+  }));
+  
+  // Creamos el punto actual
+  const currentPoint = {
+    date: new Date(product.updated_date).toISOString().split("T")[0],
+    final_price: product.final_price,
+    original_price: product.original_price
+  };
+  
+  // Lo agregamos si no existe ya un punto con misma fecha y mismo precio final
+  const exists = chartData.some(
+    d => d.date === currentPoint.date && d.final_price === currentPoint.final_price
+  );
+  
+  if (!exists) {
+    chartData.push(currentPoint);
+  }
+  
+  // Ordenamos por fecha
+  chartData = chartData.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+  
+  
 
   return (
     <div className="p-4 max-w-3xl mx-auto space-y-6">
@@ -113,22 +134,22 @@ export default function ProductPage() {
             <h2 className="text-lg font-semibold mb-2">Historial de precios</h2>
             {historyLoading ? (
                 <p className="text-sm text-gray-500">Cargando historial...</p>
-            ) : history.length === 0 ? (
+                ) : chartData.length <= 1 ? (
                 <p className="text-sm text-gray-500">Este producto mantuvo el mismo precio.</p>
-            ) : (
+                ) : (
                 <div className="w-full h-64">
-                <ResponsiveContainer width="100%" height="100%">
+                    <ResponsiveContainer width="100%" height="100%">
                     <LineChart data={chartData}>
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="date" />
-                    <YAxis />
-                    <Tooltip formatter={(value: number) => `$${value.toFixed(2)}`} />
-                    <Line type="monotone" dataKey="final_price" stroke="#10B981" name="Precio final" />
-                    <Line type="monotone" dataKey="original_price" stroke="#EF4444" name="Precio original" />
+                        <CartesianGrid strokeDasharray="3 3" />
+                        <XAxis dataKey="date" />
+                        <YAxis />
+                        <Tooltip formatter={(value: number) => `$${value.toFixed(2)}`} />
+                        <Line type="monotone" dataKey="final_price" stroke="#10B981" name="Precio final" />
+                        <Line type="monotone" dataKey="original_price" stroke="#EF4444" name="Precio original" />
                     </LineChart>
-                </ResponsiveContainer>
+                    </ResponsiveContainer>
                 </div>
-            )}
+                )}
             </div>
     </div>
   )
