@@ -193,7 +193,7 @@ for base_url in category_urls:
                     if title != "Sin título" and link:
                         cursor.execute("""
                             INSERT INTO products (title, original_price, final_price, url, image, retail_category, retailer_id, added_date, updated_date, out_of_stock)
-                            VALUES (%s, %s, %s, %s, %s, %s, %s, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+                            VALUES (%s, %s, %s, %s, %s, %s, %s, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, %s)
                             ON CONFLICT (url) DO UPDATE SET 
                                 title = EXCLUDED.title,
                                 original_price = EXCLUDED.original_price,
