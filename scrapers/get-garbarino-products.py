@@ -160,7 +160,14 @@ for base_url in category_urls:
                     # if not original_price and final_price:
                     #     original_price = final_price
 
+                    # Determinar si el producto está fuera de stock
+                    out_of_stock = "no-stock" in product.get("class", []) \
+                        or product.find("div", class_=lambda c: c and "no-stock" in c) is not None
+
+
                     print(f"Producto: {title} | URL: {link} | Precio Final: {final_price_str} | Precio Original: {original_price_str}")
+                    stock_status = "❌ SIN STOCK" if out_of_stock else "✔ En stock"
+                    print(f"{stock_status} | {title} | {final_price_str}")
 
                     # Verificar si el producto ya existe
                     cursor.execute("""
@@ -185,7 +192,7 @@ for base_url in category_urls:
                     # Insertar en la base de datos solo si tenemos un titulo y una URL
                     if title != "Sin título" and link:
                         cursor.execute("""
-                            INSERT INTO products (title, original_price, final_price, url, image, retail_category, retailer_id, added_date, updated_date)
+                            INSERT INTO products (title, original_price, final_price, url, image, retail_category, retailer_id, added_date, updated_date, out_of_stock)
                             VALUES (%s, %s, %s, %s, %s, %s, %s, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
                             ON CONFLICT (url) DO UPDATE SET 
                                 title = EXCLUDED.title,
@@ -194,7 +201,8 @@ for base_url in category_urls:
                                 image = EXCLUDED.image,
                                 category = EXCLUDED.category,
                                 retailer_id = EXCLUDED.retailer_id,
-                                updated_date = CURRENT_TIMESTAMP
+                                updated_date = CURRENT_TIMESTAMP,
+                                out_of_stock = EXCLUDED.out_of_stock
                         """, (
                             title,
                             original_price,
@@ -202,7 +210,8 @@ for base_url in category_urls:
                             link,
                             image_url,
                             category,
-                            retailer_id
+                            retailer_id,
+                            out_of_stock
                         ))
 
                         print(f"✔ Producto: {title} | Final: {final_price} | Original: {original_price if original_price else 'N/A'}")
