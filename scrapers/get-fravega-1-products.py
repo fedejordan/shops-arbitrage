@@ -179,7 +179,7 @@ for base_url in category_urls:
                             original_price = EXCLUDED.original_price,
                             final_price = EXCLUDED.final_price,
                             image = EXCLUDED.image,
-                            category = EXCLUDED.category,
+                            retail_category = EXCLUDED.retail_category,
                             retailer_id = EXCLUDED.retailer_id,
                             updated_date = CURRENT_TIMESTAMP
                     """, (
