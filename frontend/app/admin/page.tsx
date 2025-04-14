@@ -3,7 +3,6 @@
 import { useEffect, useState } from "react"
 import { Skeleton } from "@/components/ui/skeleton"
 
-
 type Stats = {
   total_products: number
   uncategorized_products: number
@@ -14,6 +13,7 @@ type Stats = {
   total_categories: number
   unmapped_retailer_categories: number
   invalid_price_products: number
+  out_of_stock_products: number // ✅ nuevo campo
 }
 
 export default function AdminHome() {
@@ -40,7 +40,7 @@ export default function AdminHome() {
 
       {loading ? (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {Array.from({ length: 9 }).map((_, i) => (
+          {Array.from({ length: 10 }).map((_, i) => (
             <div key={i} className="p-4 border rounded-lg bg-white shadow-sm space-y-2">
               <Skeleton className="h-4 w-2/3" />
               <Skeleton className="h-8 w-1/3" />
@@ -58,9 +58,9 @@ export default function AdminHome() {
           <StatCard label="📂 Categorías" value={stats!.total_categories} />
           <StatCard label="❓ Categorías retailer sin mapear" value={stats!.unmapped_retailer_categories} />
           <StatCard label="⚠️ Precio inválido" value={stats!.invalid_price_products} />
+          <StatCard label="📦 Sin stock" value={stats!.out_of_stock_products} /> {/* ✅ agregado */}
         </div>
       )}
-
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-6">
         <AdminLink href="/admin/categories" title="Retailer Categories" description="Asignar categorías propias a categorías de retailers." />

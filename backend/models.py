@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, Numeric, String, Float, DateTime, ForeignKey, func, Text
+from sqlalchemy import Column, Integer, Numeric, String, Float, DateTime, ForeignKey, func, Text, Boolean
 from database import Base
 from sqlalchemy.orm import relationship, foreign
 
@@ -21,6 +21,7 @@ class Product(Base):
     historical_prices = relationship("HistoricalPrice", back_populates="product")
     searchable_term = Column(Text)
     ai_description = Column(Text, nullable=True)
+    out_of_stock = Column(Boolean, default=False)
 
 
     @property

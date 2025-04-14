@@ -1061,7 +1061,10 @@ def get_admin_stats(db: Session = Depends(get_db)):
             .filter(
                 (models.Product.final_price == None) |
                 (models.Product.final_price <= 0)
-            ).count()
+            ).count(),
+        "out_of_stock_products": db.query(models.Product)
+            .filter(models.Product.out_of_stock == True)
+            .count()
     }
 
 @app.get("/products/{product_id}/similar", response_model=List[schemas.ProductBase])
