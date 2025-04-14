@@ -81,7 +81,11 @@ def read_products(
         category_list = [c.strip() for c in categories.split("|")]
         q = q.join(models.Category, isouter=True).filter(models.Category.name.in_(category_list))
 
-    q = q.filter(models.Product.final_price >= minPrice, models.Product.final_price <= maxPrice)
+    q = q.filter(
+        models.Product.final_price >= minPrice, 
+        models.Product.final_price <= maxPrice,
+        models.Product.out_of_stock == False
+    )
 
     if sort == "price_asc":
         q = q.order_by(models.Product.final_price.asc())
@@ -273,6 +277,7 @@ def get_tweet_suggestions(db: Session = Depends(get_db)):
      # Traer productos que coincidan por match_key
     productos = (
         db.query(models.Product)
+        .filter(models.Product.out_of_stock == False)
         .join(union_keys, (models.Product.title == union_keys.c.match_key) | (models.Product.searchable_term == union_keys.c.match_key))
         .options(joinedload(models.Product.retailer))
         .order_by(models.Product.searchable_term.asc().nulls_last(), models.Product.title.asc(), models.Product.final_price.asc())
@@ -404,7 +409,8 @@ def get_discount_tweets(db: Session = Depends(get_db)):
         .filter(
             models.Product.original_price != None,
             models.Product.original_price > 0,
-            models.Product.final_price < models.Product.original_price * 0.75
+            models.Product.final_price < models.Product.original_price * 0.75,
+            models.Product.out_of_stock == False
         )
         .order_by(func.random())
         .limit(5)
@@ -507,7 +513,8 @@ def get_top_discount_tweets(db: Session = Depends(get_db)):
         .filter(
             models.Product.original_price.isnot(None),
             models.Product.original_price > 0,
-            models.Product.final_price < models.Product.original_price
+            models.Product.final_price < models.Product.original_price,
+            models.Product.out_of_stock == False
         )
         .order_by((1 - models.Product.final_price / models.Product.original_price).desc())
         .limit(3)
@@ -590,7 +597,8 @@ def get_biggest_historical_drop_tweet(db: Session = Depends(get_db)):
         .filter(
             models.HistoricalPrice.original_price != None,
             models.HistoricalPrice.final_price != None,
-            models.HistoricalPrice.original_price > models.HistoricalPrice.final_price
+            models.HistoricalPrice.original_price > models.HistoricalPrice.final_price,
+            models.Product.out_of_stock == False
         )
         .order_by((models.HistoricalPrice.original_price - models.HistoricalPrice.final_price).desc())
         .limit(1)
@@ -719,6 +727,7 @@ def get_weekly_drop_tweets(db: Session = Depends(get_db)):
         .join(new_prices, models.Product.id == new_prices.c.product_id)
         .join(models.Retailer, models.Retailer.id == models.Product.retailer_id)
         .filter(old_prices.c.final_price > new_prices.c.final_price)
+        .filter(models.Product.out_of_stock == False)
         .order_by((old_prices.c.final_price - new_prices.c.final_price).desc())
         .limit(5)
         .all()
@@ -858,7 +867,8 @@ def get_poll_tweet_ideas(db: Session = Depends(get_db)):
         .filter(
             models.Product.original_price != None,
             models.Product.original_price > 0,
-            models.Product.final_price < models.Product.original_price
+            models.Product.final_price < models.Product.original_price,
+            models.Product.out_of_stock == False
         )
         .order_by(func.random())
         .limit(4)
@@ -1060,6 +1070,7 @@ def get_similar_products(product_id: int, db: Session = Depends(get_db)):
         db.query(models.Product)
         .options(joinedload(models.Product.retailer))
         .filter(models.Product.id == product_id)
+        .filter(models.Product.out_of_stock == False)
         .first()
     )
     if not product:
@@ -1073,7 +1084,8 @@ def get_similar_products(product_id: int, db: Session = Depends(get_db)):
             db.query(models.Product)
             .filter(
                 models.Product.searchable_term == product.searchable_term,
-                models.Product.id != product.id
+                models.Product.id != product.id,
+                models.Product.out_of_stock == False
             )
             .order_by(models.Product.final_price.asc())
             .limit(6)
@@ -1086,7 +1098,8 @@ def get_similar_products(product_id: int, db: Session = Depends(get_db)):
             db.query(models.Product)
             .filter(
                 models.Product.category_id == product.category_id,
-                models.Product.id != product.id
+                models.Product.id != product.id,
+                models.Product.out_of_stock == False
             )
             .order_by(models.Product.final_price.asc())
             .limit(6 - len(similares))
