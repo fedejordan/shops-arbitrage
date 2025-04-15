@@ -125,7 +125,7 @@ def get_deepseek_description(prompt):
                 ],
                 "temperature": 0.7
             },
-            timeout=20.0
+            timeout=60.0
         )
         response.raise_for_status()
         return response.json()["choices"][0]["message"]["content"].strip()
