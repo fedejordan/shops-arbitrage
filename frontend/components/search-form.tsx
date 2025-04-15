@@ -76,7 +76,9 @@ export function SearchForm() {
   const [categories, setCategories] = useState<string[]>([])
 
   useEffect(() => {
-    fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/categories`)
+    const url = `${process.env.NEXT_PUBLIC_API_BASE_URL}/categories`
+    console.log("Cargando categorías desde:", url)
+    fetch(url)
       .then(res => res.json())
       .then(data => setCategories(data.map((c: { name: string }) => c.name)))
       .catch(err => console.error("Error cargando categorías:", err))
@@ -86,7 +88,9 @@ export function SearchForm() {
   const [retailers, setRetailers] = useState<string[]>([])
 
   useEffect(() => {
-    fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/retailers`)
+    const url = `${process.env.NEXT_PUBLIC_API_BASE_URL}/retailers`
+    console.log("Cargando retailers desde:", url)
+    fetch(url)
       .then(res => res.json())
       .then(data => setRetailers(data.map((r: { name: string }) => r.name)))
       .catch(err => console.error("Error cargando retailers:", err))
