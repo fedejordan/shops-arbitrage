@@ -16,6 +16,8 @@ from sqlalchemy.orm import joinedload
 import time
 from urllib.parse import unquote
 from datetime import datetime, timedelta
+from starlette.middleware.proxy_headers import ProxyHeadersMiddleware
+from fastapi.middleware.httpsredirect import HTTPSRedirectMiddleware
 
 # Configurar el logger para SQLAlchemy
 logging.basicConfig()
@@ -38,6 +40,12 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Middleware para respetar los headers del proxy de Railway
+app.add_middleware(ProxyHeadersMiddleware)
+
+# Middleware para redirigir a HTTPS correctamente (opcional pero recomendable)
+app.add_middleware(HTTPSRedirectMiddleware)
 
 # Dependencia para obtener la sesión de la BD
 def get_db():
