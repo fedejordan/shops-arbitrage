@@ -1,4 +1,4 @@
-from fastapi import FastAPI, Depends, HTTPException, Query
+from fastapi import FastAPI, Depends, HTTPException, Query, Request
 from sqlalchemy.orm import Session
 from database import SessionLocal, engine, Base
 from models import Base, Category, RetailerCategory
@@ -16,7 +16,6 @@ from sqlalchemy.orm import joinedload
 import time
 from urllib.parse import unquote
 from datetime import datetime, timedelta
-from starlette.middleware.proxy_headers import ProxyHeadersMiddleware
 from fastapi.middleware.httpsredirect import HTTPSRedirectMiddleware
 
 # Configurar el logger para SQLAlchemy
@@ -41,9 +40,6 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Middleware para respetar los headers del proxy de Railway
-app.add_middleware(ProxyHeadersMiddleware)
-
 # Middleware para redirigir a HTTPS correctamente (opcional pero recomendable)
 app.add_middleware(HTTPSRedirectMiddleware)
 
@@ -54,6 +50,15 @@ def get_db():
         yield db
     finally:
         db.close()
+
+@app.middleware("http")
+async def fix_proto_header(request: Request, call_next):
+    if request.headers.get("x-forwarded-proto") == "https":
+        scope = request.scope
+        scope["scheme"] = "https"
+    response = await call_next(request)
+    return response
+
 
 # Endpoint para obtener productos, con opción de búsqueda por título
 @app.get("/products", response_model=schemas.ProductListResponse)
