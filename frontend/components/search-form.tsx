@@ -46,6 +46,7 @@ import {
   PaginationNext,
   PaginationEllipsis,
 } from "@/components/ui/pagination"
+import { event } from "@/lib/gtag"
 
 
 
@@ -95,6 +96,12 @@ export function SearchForm() {
   const fetchProducts = async (pageToLoad: number) => {
     setLoading(true)
     setSearched(true)
+    event({
+      action: "filter_applied",
+      category: "search_filters",
+      label: `retailers: ${selectedRetailers.join(",") || "none"} | categories: ${selectedCategories.join(",") || "none"} | price: ${priceRange[0]}-${priceRange[1]} | sort: ${sortBy || "none"}`,
+    })
+    
   
     try {
       let url = `${process.env.NEXT_PUBLIC_API_BASE_URL}/products?query=${encodeURIComponent(searchQuery)}&page=${pageToLoad}&limit=${limit}`
@@ -126,6 +133,11 @@ export function SearchForm() {
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault()
+    event({
+      action: "search",
+      category: "search",
+      label: searchQuery,
+    })    
     fetchProducts(1) // siempre buscás desde la página 1 al hacer una nueva búsqueda
   }
 
@@ -207,7 +219,17 @@ export function SearchForm() {
                 
                 <div className="space-y-2">
                   <Label htmlFor="sortBy">Ordenar por</Label>
-                  <Select value={sortBy} onValueChange={setSortBy}>
+                  <Select value={sortBy} 
+                    onValueChange={
+                      (value) => {
+                        setSortBy(value)
+                        event({
+                          action: "sort_selected",
+                          category: "sorting",
+                          label: value,
+                        })
+                      }
+                    }>
                     <SelectTrigger id="sortBy">
                       <SelectValue placeholder="Seleccionar orden" />
                     </SelectTrigger>
@@ -439,7 +461,15 @@ export function SearchForm() {
                 
                 {/* Selector de ordenamiento en línea (visible solo con resultados) */}
                 {products.length > 0 && (
-                  <Select value={sortBy} onValueChange={setSortBy}>
+                  <Select value={sortBy} 
+                    onValueChange={(value) => {
+                      setSortBy(value)
+                      event({
+                        action: "sort_selected",
+                        category: "sorting",
+                        label: value,
+                      })
+                    }}>
                     <SelectTrigger className="w-auto min-w-[180px]">
                       <span className="flex items-center gap-1">
                         <ArrowUpDown className="h-4 w-4" />
@@ -468,6 +498,11 @@ export function SearchForm() {
                           href="#"
                           onClick={(e) => {
                             e.preventDefault()
+                            event({
+                              action: "paginate",
+                              category: "pagination",
+                              label: `page ${page - 1}`, // o `page ${page - 1}`, `page ${page + 1}`, etc.
+                            })                            
                             fetchProducts(page - 1)
                           }}
                         />
@@ -478,6 +513,12 @@ export function SearchForm() {
                       <PaginationItem>
                         <PaginationLink href="#" onClick={(e) => {
                           e.preventDefault()
+                          event({
+                            action: "paginate",
+                            category: "pagination",
+                            label: `page ${p}`, // o `page ${page - 1}`, `page ${page + 1}`, etc.
+                          })
+                          
                           fetchProducts(1)
                         }}>
                           1
@@ -501,6 +542,12 @@ export function SearchForm() {
                               isActive={p === page}
                               onClick={(e) => {
                                 e.preventDefault()
+                                event({
+                                  action: "paginate",
+                                  category: "pagination",
+                                  label: `page ${p}`, // o `page ${page - 1}`, `page ${page + 1}`, etc.
+                                })
+                                
                                 fetchProducts(p)
                               }}
                             >
@@ -522,6 +569,12 @@ export function SearchForm() {
                       <PaginationItem>
                         <PaginationLink href="#" onClick={(e) => {
                           e.preventDefault()
+                          event({
+                            action: "paginate",
+                            category: "pagination",
+                            label: `page ${totalPages}`, // o `page ${page - 1}`, `page ${page + 1}`, etc.
+                          })
+                          
                           fetchProducts(totalPages)
                         }}>
                           {totalPages}
@@ -535,6 +588,12 @@ export function SearchForm() {
                           href="#"
                           onClick={(e) => {
                             e.preventDefault()
+                            event({
+                              action: "paginate",
+                              category: "pagination",
+                              label: `page ${page + 1}`, // o `page ${page - 1}`, `page ${page + 1}`, etc.
+                            })
+                            
                             fetchProducts(page + 1)
                           }}
                         />

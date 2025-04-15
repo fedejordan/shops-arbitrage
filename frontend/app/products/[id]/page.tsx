@@ -19,6 +19,8 @@ import {
   CartesianGrid,
   ResponsiveContainer,
 } from "recharts";
+import { event } from "@/lib/gtag"
+
 
 // --- Componente de Alerta de Error (Opcional, puedes ponerlo en otro archivo) ---
 function ErrorAlert({ error }) {
@@ -65,6 +67,11 @@ export default function ProductPage() {
         // Procesar resultado del producto
         if (results[0].status === 'fulfilled') {
           setProduct(results[0].value);
+          event({
+            action: "view_product",
+            category: "product_page",
+            label: results[0].value?.title || "unknown",
+          })          
         } else {
           console.error("Error cargando producto:", results[0].reason);
           fetchError = fetchError || results[0].reason;
@@ -205,9 +212,21 @@ export default function ProductPage() {
 
           {/* Botón de compra */}
           <Button asChild size="lg" className="w-fit">
-            <a href={product.url} target="_blank" rel="noopener noreferrer">
-              Ver en tienda 🛒
-            </a>
+          <a
+            href={product.url}
+            target="_blank"
+            rel="noopener noreferrer"
+            onClick={() =>
+              event({
+                action: "click_buy_now",
+                category: "product_page",
+                label: `${product.title} - ${product.retailer?.name || "unknown"}`,
+              })
+            }
+          >
+            Ver en tienda 🛒
+          </a>
+
           </Button>
 
           {/* Descripción */}
@@ -293,6 +312,14 @@ export default function ProductPage() {
                   key={p.id}
                   href={`/products/${p.id}`} // Asumiendo ruta interna
                   className="border rounded-lg overflow-hidden group hover:shadow-md transition-shadow duration-200 flex flex-col"
+                  onClick={() =>
+                    event({
+                      action: "click_similar_product",
+                      category: "product_page",
+                      label: p.title,
+                    })
+                  }
+                  
                 >
                   <div className="h-40 relative bg-slate-50 dark:bg-slate-800 flex items-center justify-center p-2">
                     <Image

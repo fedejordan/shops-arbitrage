@@ -1,7 +1,11 @@
+"use client"
+
 import Link from "next/link"
+import { useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Twitter } from "lucide-react"
 import HomeSearch from "@/components/home-search"
+import { event } from "@/lib/gtag"
 
 export default function Home() {
   return (
@@ -16,10 +20,34 @@ export default function Home() {
           Descubrí el mejor precio en segundos con historial de precios, alertas y descuentos.
         </p>
         <div className="flex justify-center gap-4 flex-wrap pt-4">
-          <Button asChild size="lg" className="px-6 py-3 text-base">
+          <Button
+            asChild
+            size="lg"
+            className="px-6 py-3 text-base"
+            onClick={() =>
+              event({
+                action: "click_landing_ir_buscador",
+                category: "landing",
+                label: "main button",
+              })
+            }
+          >
             <Link href="/search">Probar el buscador</Link>
           </Button>
-          <Button asChild variant="outline" size="lg" className="px-6 py-3 text-base">
+
+          <Button
+            asChild
+            variant="outline"
+            size="lg"
+            className="px-6 py-3 text-base"
+            onClick={() =>
+              event({
+                action: "click_landing_twitter",
+                category: "landing",
+                label: "follow button on X",
+              })
+            }
+          >
             <Link
               href="https://twitter.com/TuPrecioIdealAr"
               target="_blank"
@@ -96,13 +124,21 @@ export default function Home() {
         <p className="text-base opacity-90">
           Empezá ahora a comparar precios y descubrir las mejores ofertas del país.
         </p>
-        <Button asChild size="lg" className="px-6 py-3 text-base">
+        <Button
+          asChild
+          size="lg"
+          className="px-6 py-3 text-base"
+          onClick={() =>
+            event({
+              action: "click_cta_save_money",
+              category: "landing",
+              label: "cta final button",
+            })
+          }
+        >
           <Link href="/search">Ir al buscador</Link>
         </Button>
       </section>
-
-      {/* Embed del buscador (opcional o eliminable) */}
-      {/* <HomeSearch /> */}
     </main>
   )
 }

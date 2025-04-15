@@ -5,6 +5,7 @@ import type { Product } from "@/lib/types"
 import { formatCurrency, calculateDiscount, timeAgo } from "@/lib/utils"
 import { ExternalLink } from "lucide-react"
 import Link from "next/link"
+import { event } from "@/lib/gtag"
 
 export function ProductList({ products }: { products: Product[] }) {
   if (products.length === 0) {
@@ -14,6 +15,13 @@ export function ProductList({ products }: { products: Product[] }) {
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
       {products.map((product) => {
+        const handleClickDetail = () => {
+          event({
+            action: "click_product_detail",
+            category: "product_list",
+            label: `${product.title} - ${product.retailer?.name || "unknown"}`,
+          })
+        }
         console.log(product.title + " - " + product.category_name + " - " + product.added_date + " - " + product.updated_date)
         console.log(new Date(product.added_date))
         return (
@@ -75,6 +83,7 @@ export function ProductList({ products }: { products: Product[] }) {
                     <Link
                       href={`/products/${product.id}`}
                       className="mt-2 inline-flex items-center text-sm text-primary hover:underline"
+                      onClick={handleClickDetail}
                     >
                       Ver detalle <ExternalLink className="ml-1 h-3 w-3" />
                     </Link>
