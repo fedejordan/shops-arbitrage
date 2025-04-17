@@ -13,7 +13,8 @@ type Stats = {
   total_categories: number
   unmapped_retailer_categories: number
   invalid_price_products: number
-  out_of_stock_products: number // ✅ nuevo campo
+  out_of_stock_products: number
+  suspicious_discount_products: number
 }
 
 export default function AdminHome() {
@@ -58,7 +59,8 @@ export default function AdminHome() {
           <StatCard label="📂 Categorías" value={stats!.total_categories} />
           <StatCard label="❓ Categorías retailer sin mapear" value={stats!.unmapped_retailer_categories} />
           <StatCard label="⚠️ Precio inválido" value={stats!.invalid_price_products} />
-          <StatCard label="📦 Sin stock" value={stats!.out_of_stock_products} /> {/* ✅ agregado */}
+          <StatCard label="📦 Sin stock" value={stats!.out_of_stock_products} />
+          <StatCard label="❗ Descuentos sospechosos (>90%)" value={stats!.suspicious_discount_products} />
         </div>
       )}
 

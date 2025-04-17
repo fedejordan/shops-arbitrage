@@ -526,7 +526,8 @@ def get_top_discount_tweets(db: Session = Depends(get_db)):
         .filter(
             models.Product.original_price.isnot(None),
             models.Product.original_price > 0,
-            models.Product.final_price < models.Product.original_price,
+            models.Product.final_price < models.Product.original_price,    
+            models.Product.final_price / models.Product.original_price >= 0.1,  # no más del 90% off
             models.Product.out_of_stock == False
         )
         .order_by((1 - models.Product.final_price / models.Product.original_price).desc())
@@ -1077,7 +1078,14 @@ def get_admin_stats(db: Session = Depends(get_db)):
             ).count(),
         "out_of_stock_products": db.query(models.Product)
             .filter(models.Product.out_of_stock == True)
-            .count()
+            .count(),
+        "suspicious_discount_products": db.query(models.Product)
+            .filter(
+                models.Product.original_price.isnot(None),
+                models.Product.original_price > 0,
+                models.Product.final_price < models.Product.original_price,
+                models.Product.final_price / models.Product.original_price < 0.1
+            ).count(),
     }
 
 @app.get("/products/{product_id}/similar", response_model=List[schemas.ProductBase])
