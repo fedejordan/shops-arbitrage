@@ -1,4 +1,4 @@
-from fastapi import FastAPI, Depends, HTTPException, Query, Request
+from fastapi import FastAPI, Depends, HTTPException, Query, Request, Body
 from sqlalchemy.orm import Session
 from database import SessionLocal, engine, Base
 from models import Base, Category, RetailerCategory
@@ -41,7 +41,7 @@ app.add_middleware(
 )
 
 # Middleware para redirigir a HTTPS correctamente (opcional pero recomendable)
-app.add_middleware(HTTPSRedirectMiddleware)
+# app.add_middleware(HTTPSRedirectMiddleware)
 
 # Dependencia para obtener la sesión de la BD
 def get_db():
@@ -1136,3 +1136,19 @@ def get_similar_products(product_id: int, db: Session = Depends(get_db)):
 
     return similares
 
+@app.post("/admin/login-check")
+def check_admin_login(data: dict = Body(...)):
+    username = data.get("username")
+    password = data.get("password")
+    print(f"Validando usuario: {username} - {password}")
+    logging.info(f"Validando usuario: {username} - {password}")
+
+    valid_user = os.getenv("ADMIN_USER", "admin")
+    valid_pass = os.getenv("ADMIN_PASSWORD", "1234")
+    print(f"Validando usuario: {valid_user} - {valid_pass}")
+    logging.info(f"Validando usuario: {valid_user} - {valid_pass}")
+
+    if username == valid_user and password == valid_pass:
+        return {"ok": True}
+    else:
+        raise HTTPException(status_code=401, detail="Credenciales inválidas")
