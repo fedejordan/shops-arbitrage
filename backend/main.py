@@ -70,6 +70,7 @@ def admin_required(endpoint):
         token = (
             request.cookies.get("admin_token") or 
             request.headers.get("Authorization", "").replace("Bearer ", "")
+        )
 
         expected_token = os.getenv("ADMIN_TOKEN", "secret123")
 
