@@ -26,7 +26,9 @@ export default function AuthWrapper({ children }: { children: React.ReactNode })
       if (res.ok) {
         setAuthenticated(true)
         localStorage.setItem("authenticated", "true")
-      } else {
+      } else if (res.status == 429) {
+        alert("Demasiados intentos de inicio de sesión. Por favor, espere un momento e intente nuevamente.")
+      } else{
         alert("Credenciales incorrectas")
       }
     } catch {

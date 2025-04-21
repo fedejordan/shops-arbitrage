@@ -17,6 +17,11 @@ import time
 from urllib.parse import unquote
 from datetime import datetime, timedelta
 from fastapi.middleware.httpsredirect import HTTPSRedirectMiddleware
+from slowapi import Limiter, _rate_limit_exceeded_handler
+from slowapi.util import get_remote_address
+from fastapi.responses import JSONResponse
+from fastapi.exceptions import RequestValidationError
+
 
 # Configurar el logger para SQLAlchemy
 logging.basicConfig()
@@ -27,6 +32,11 @@ load_dotenv()
 
 # Cargar las variables de entorno desde el archivo .env
 app = FastAPI()
+
+# Configurar rate limiting
+limiter = Limiter(key_func=get_remote_address)
+app.state.limiter = limiter
+app.add_exception_handler(429, _rate_limit_exceeded_handler)
 
 # Crear las tablas en la base de datos (si no existen)
 Base.metadata.create_all(bind=engine)
@@ -1137,16 +1147,13 @@ def get_similar_products(product_id: int, db: Session = Depends(get_db)):
     return similares
 
 @app.post("/admin/login-check")
-def check_admin_login(data: dict = Body(...)):
+@limiter.limit("5/minute")
+def check_admin_login(data: dict = Body(...), request: Request = None):
     username = data.get("username")
     password = data.get("password")
-    print(f"Validando usuario: {username} - {password}")
-    logging.info(f"Validando usuario: {username} - {password}")
 
     valid_user = os.getenv("ADMIN_USER", "admin")
     valid_pass = os.getenv("ADMIN_PASSWORD", "1234")
-    print(f"Validando usuario: {valid_user} - {valid_pass}")
-    logging.info(f"Validando usuario: {valid_user} - {valid_pass}")
 
     if username == valid_user and password == valid_pass:
         return {"ok": True}
