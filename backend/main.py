@@ -190,13 +190,13 @@ def create_category(category: schemas.CategoryCreate, db: Session = Depends(get_
 def get_unmapped_retailer_categories(request: Request, db: Session = Depends(get_db)):
     return db.query(RetailerCategory).filter(RetailerCategory.category_id == None).all()
 
-@app.patch("/retailer-categories/{rc_id}/map")
+@app.patch("/retailer-categories/{rc_id}/map", response_model=schemas.SimpleMessageResponse)
 @admin_required
-def map_retailer_category(request: Request, rc_id: int, category_id: int, db: Session = Depends(get_db)):
+def map_retailer_category(request: Request, rc_id: int, data: schemas.MapCategoryRequest, db: Session = Depends(get_db)):
     rc = db.query(RetailerCategory).filter(RetailerCategory.id == rc_id).first()
     if not rc:
         raise HTTPException(status_code=404, detail="Retailer category not found")
-    rc.category_id = category_id
+    rc.category_id = data.category_id
     db.commit()
     return {"message": "Mapped successfully"}
 
@@ -217,23 +217,23 @@ def get_uncategorized_products(
         .all()
     )
 
-@app.get("/products/uncategorized/count")
+@app.get("/products/uncategorized/count", response_model=schemas.CountResponse)
 @admin_required
 def get_uncategorized_count(request: Request, db: Session = Depends(get_db)):
     count = db.query(models.Product).filter(models.Product.category_id == None).count()
     return {"count": count}
 
-@app.patch("/products/{product_id}/assign-category")
+@app.patch("/products/{product_id}/assign-category", response_model=schemas.SimpleMessageResponse)
 @admin_required
-def assign_product_category(request: Request, product_id: int, category_id: int, db: Session = Depends(get_db)):
+def assign_product_category(request: Request, product_id: int, data: schemas.MapCategoryRequest, db: Session = Depends(get_db)):
     product = db.query(models.Product).filter(models.Product.id == product_id).first()
     if not product:
         raise HTTPException(status_code=404, detail="Product not found")
-    product.category_id = category_id
+    product.category_id = data.category_id
     db.commit()
     return {"message": "Category assigned successfully"}
 
-@app.post("/products/{product_id}/suggest-category")
+@app.post("/products/{product_id}/suggest-category", response_model=schemas.SuggestedCategoryResponse)
 @admin_required
 def suggest_category(request: Request, product_id: int, db: Session = Depends(get_db)):
     product = db.query(models.Product).filter(models.Product.id == product_id).first()
@@ -1089,7 +1089,7 @@ def get_product_with_description(product_id: int, db: Session = Depends(get_db))
 
     return product
 
-@app.get("/products/{product_id}/history")
+@app.get("/products/{product_id}/history", response_model=List[schemas.PriceHistoryPoint])
 def get_price_history(product_id: int, db: Session = Depends(get_db)):
     history = (
         db.query(models.HistoricalPrice)
@@ -1110,7 +1110,7 @@ def get_price_history(product_id: int, db: Session = Depends(get_db)):
         for h in history
     ]
 
-@app.get("/admin/stats")
+@app.get("/admin/stats", response_model=schemas.AdminStats)
 @admin_required
 def get_admin_stats(request: Request, db: Session = Depends(get_db)):
     return {
@@ -1187,11 +1187,11 @@ def get_similar_products(product_id: int, db: Session = Depends(get_db)):
 
     return similares
 
-@app.post("/admin/login-check")
+@app.post("/admin/login-check", response_model=schemas.SimpleOKResponse)
 @limiter.limit("5/minute")
-def check_admin_login(data: dict = Body(...), request: Request = None):
-    username = data.get("username")
-    password = data.get("password")
+def check_admin_login(data: schemas.AdminLoginRequest, request: Request = None):
+    username = data.username
+    password = data.password
 
     valid_user = os.getenv("ADMIN_USER", "admin")
     valid_pass = os.getenv("ADMIN_PASSWORD", "1234")
@@ -1209,7 +1209,7 @@ def check_admin_login(data: dict = Body(...), request: Request = None):
     else:
         raise HTTPException(status_code=401, detail="Credenciales inválidas")
     
-@app.post("/admin/logout")
+@app.post("/admin/logout", response_model=schemas.SimpleOKResponse)
 def logout():
     response = JSONResponse(content={"ok": True})
     response.delete_cookie("admin_token")

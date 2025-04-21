@@ -53,3 +53,41 @@ class ProductListResponse(BaseModel):
     total: int
     page: int
     limit: int
+
+class AdminLoginRequest(BaseModel):
+    username: str
+    password: str
+
+class SimpleOKResponse(BaseModel):
+    ok: bool
+
+class SimpleMessageResponse(BaseModel):
+    message: str
+
+class MapCategoryRequest(BaseModel):
+    category_id: int
+
+class SuggestedCategoryResponse(BaseModel):
+    suggested_category_id: Optional[int]
+    suggested_category_name: Optional[str] = None
+
+class CountResponse(BaseModel):
+    count: int
+
+class PriceHistoryPoint(BaseModel):
+    date: str  # ISO format string
+    original_price: Optional[float]
+    final_price: float
+
+class AdminStats(BaseModel):
+    total_products: int
+    uncategorized_products: int
+    products_with_history: int
+    products_with_searchable_term: int
+    total_retailers: int
+    total_categories: int
+    unmapped_retailer_categories: int
+    products_with_ai_description: int
+    invalid_price_products: int
+    out_of_stock_products: int
+    suspicious_discount_products: int
