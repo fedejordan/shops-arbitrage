@@ -24,6 +24,7 @@ from fastapi.exceptions import RequestValidationError
 from fastapi import Request
 from functools import wraps
 from fastapi.responses import JSONResponse
+import inspect
 
 # Configurar el logger para SQLAlchemy
 logging.basicConfig()
@@ -76,7 +77,12 @@ def admin_required(endpoint):
 
         if token != expected_token:
             raise HTTPException(status_code=403, detail="Acceso restringido para administradores")
-        return await endpoint(request, *args, **kwargs)
+        
+        if inspect.iscoroutinefunction(endpoint):
+            return await endpoint(request, *args, **kwargs)
+        else:
+            return endpoint(request, *args, **kwargs)
+        
     return wrapper
 
 @app.middleware("http")
@@ -410,7 +416,7 @@ def get_tweet_suggestions(request: Request, db: Session = Depends(get_db)):
             json={
                 "model": "deepseek-chat",
                 "messages": [
-                    { "role": "system", "content": "Sos un community manager experto en arbitraje de productos." },
+                    { "role": "system", "content": "Sos un community manager experto en ofertas de productos." },
                     { "role": "user", "content": prompt }
                 ],
                 "temperature": 0.7
