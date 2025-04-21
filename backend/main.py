@@ -30,7 +30,8 @@ from starlette.requests import Request as StarletteRequest
 from starlette.responses import JSONResponse
 import traceback
 import html
-
+from starlette.middleware import Middleware
+from secure import SecureHeaders
 
 # Configurar el logger para SQLAlchemy
 logging.basicConfig()
@@ -68,7 +69,7 @@ Base.metadata.create_all(bind=engine)
 # Configurar CORS para desarrollo (ajusta en producción)
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Es recomendable especificar los orígenes permitidos
+    allow_origins=["https://tuprecioideal.ar", "https://www.tuprecioideal.ar"], # http://localhost:3000
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -105,6 +106,14 @@ def admin_required(endpoint):
             return endpoint(request, *args, **kwargs)
         
     return wrapper
+
+secure_headers = SecureHeaders()
+
+@app.middleware("http")
+async def set_secure_headers(request: Request, call_next):
+    response = await call_next(request)
+    secure_headers.starlette(response)
+    return response
 
 @app.middleware("http")
 async def fix_proto_header(request: Request, call_next):
