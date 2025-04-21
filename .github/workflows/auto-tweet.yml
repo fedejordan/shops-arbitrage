@@ -27,6 +27,7 @@ jobs:
           API_BASE_URL: ${{ secrets.API_BASE_URL }}
           ADMIN_USER: ${{ secrets.ADMIN_USER }}
           ADMIN_PASSWORD: ${{ secrets.ADMIN_PASSWORD }}
+          ADMIN_TOKEN: ${{ secrets.ADMIN_TOKEN }}
         run: |
           cd backend
           python random-tweet.py
