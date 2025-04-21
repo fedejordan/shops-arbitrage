@@ -25,6 +25,10 @@ from fastapi import Request
 from functools import wraps
 from fastapi.responses import JSONResponse
 import inspect
+from starlette.middleware.base import BaseHTTPMiddleware
+from starlette.requests import Request as StarletteRequest
+from starlette.responses import JSONResponse
+import traceback
 
 # Configurar el logger para SQLAlchemy
 logging.basicConfig()
@@ -34,7 +38,22 @@ logging.basicConfig()
 load_dotenv()
 
 # Cargar las variables de entorno desde el archivo .env
-app = FastAPI()
+app = FastAPI(debug=False)
+
+class ExceptionHandlerMiddleware(BaseHTTPMiddleware):
+    async def dispatch(self, request: StarletteRequest, call_next):
+        try:
+            response = await call_next(request)
+            return response
+        except Exception as exc:
+            # Log interno con stacktrace si lo necesitás para debug (NO lo devuelvas)
+            logging.error("Error inesperado: %s", traceback.format_exc())
+            return JSONResponse(
+                status_code=500,
+                content={"detail": "Error interno del servidor"},
+            )
+
+app.add_middleware(ExceptionHandlerMiddleware)
 
 # Configurar rate limiting
 limiter = Limiter(key_func=get_remote_address)
