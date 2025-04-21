@@ -36,10 +36,20 @@ export default function AuthWrapper({ children }: { children: React.ReactNode })
     }
   }
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
+    try {
+      await fetch(`${url}/admin/logout`, {
+        method: "POST",
+        credentials: "include", // 🔑 necesario para que se envíe la cookie
+      })
+    } catch (error) {
+      console.error("Error al hacer logout", error)
+    }
+  
     localStorage.removeItem("authenticated")
     setAuthenticated(false)
   }
+  
 
   if (loading) return null
 

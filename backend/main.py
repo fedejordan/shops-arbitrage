@@ -67,7 +67,9 @@ def get_db():
 def admin_required(endpoint):
     @wraps(endpoint)
     async def wrapper(request: Request, *args, **kwargs):
-        token = request.cookies.get("admin_token") or request.headers.get("Authorization")
+        token = (
+            request.cookies.get("admin_token") or 
+            request.headers.get("Authorization", "").replace("Bearer ", "")
 
         expected_token = os.getenv("ADMIN_TOKEN", "secret123")
 
