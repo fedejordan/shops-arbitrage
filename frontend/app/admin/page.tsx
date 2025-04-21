@@ -24,7 +24,7 @@ export default function AdminHome() {
   const url = process.env.NEXT_PUBLIC_API_BASE_URL
 
   useEffect(() => {
-    fetch(`${url}/admin/stats`)
+    fetch(`${url}/admin/stats`, { credentials: "include" })
       .then(res => res.json())
       .then(data => {
         setStats(data)

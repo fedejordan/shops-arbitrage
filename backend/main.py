@@ -21,7 +21,9 @@ from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.util import get_remote_address
 from fastapi.responses import JSONResponse
 from fastapi.exceptions import RequestValidationError
-
+from fastapi import Request
+from functools import wraps
+from fastapi.responses import JSONResponse
 
 # Configurar el logger para SQLAlchemy
 logging.basicConfig()
@@ -60,6 +62,19 @@ def get_db():
         yield db
     finally:
         db.close()
+
+# Proteccion de rol admin
+def admin_required(endpoint):
+    @wraps(endpoint)
+    async def wrapper(request: Request, *args, **kwargs):
+        token = request.cookies.get("admin_token") or request.headers.get("Authorization")
+
+        expected_token = os.getenv("ADMIN_TOKEN", "secret123")
+
+        if token != expected_token:
+            raise HTTPException(status_code=403, detail="Acceso restringido para administradores")
+        return await endpoint(request, *args, **kwargs)
+    return wrapper
 
 @app.middleware("http")
 async def fix_proto_header(request: Request, call_next):
@@ -145,7 +160,8 @@ def read_products(
 
 
 @app.get("/ping")
-def ping():
+@admin_required
+def ping(request: Request):
     return {"status": "ok"}
 
 @app.get("/categories/", response_model=list[schemas.Category])
@@ -161,11 +177,13 @@ def create_category(category: schemas.CategoryCreate, db: Session = Depends(get_
     return db_category
 
 @app.get("/retailer-categories/unmapped", response_model=list[schemas.RetailerCategory])
-def get_unmapped_retailer_categories(db: Session = Depends(get_db)):
+@admin_required
+def get_unmapped_retailer_categories(request: Request, db: Session = Depends(get_db)):
     return db.query(RetailerCategory).filter(RetailerCategory.category_id == None).all()
 
 @app.patch("/retailer-categories/{rc_id}/map")
-def map_retailer_category(rc_id: int, category_id: int, db: Session = Depends(get_db)):
+@admin_required
+def map_retailer_category(request: Request, rc_id: int, category_id: int, db: Session = Depends(get_db)):
     rc = db.query(RetailerCategory).filter(RetailerCategory.id == rc_id).first()
     if not rc:
         raise HTTPException(status_code=404, detail="Retailer category not found")
@@ -174,7 +192,9 @@ def map_retailer_category(rc_id: int, category_id: int, db: Session = Depends(ge
     return {"message": "Mapped successfully"}
 
 @app.get("/products/uncategorized", response_model=List[schemas.ProductBase])
+@admin_required
 def get_uncategorized_products(
+    request: Request,
     db: Session = Depends(get_db),
     offset: int = Query(0, ge=0),
     limit: int = Query(50, ge=1, le=200)
@@ -189,12 +209,14 @@ def get_uncategorized_products(
     )
 
 @app.get("/products/uncategorized/count")
-def get_uncategorized_count(db: Session = Depends(get_db)):
+@admin_required
+def get_uncategorized_count(request: Request, db: Session = Depends(get_db)):
     count = db.query(models.Product).filter(models.Product.category_id == None).count()
     return {"count": count}
 
 @app.patch("/products/{product_id}/assign-category")
-def assign_product_category(product_id: int, category_id: int, db: Session = Depends(get_db)):
+@admin_required
+def assign_product_category(request: Request, product_id: int, category_id: int, db: Session = Depends(get_db)):
     product = db.query(models.Product).filter(models.Product.id == product_id).first()
     if not product:
         raise HTTPException(status_code=404, detail="Product not found")
@@ -203,7 +225,8 @@ def assign_product_category(product_id: int, category_id: int, db: Session = Dep
     return {"message": "Category assigned successfully"}
 
 @app.post("/products/{product_id}/suggest-category")
-def suggest_category(product_id: int, db: Session = Depends(get_db)):
+@admin_required
+def suggest_category(request: Request, product_id: int, db: Session = Depends(get_db)):
     product = db.query(models.Product).filter(models.Product.id == product_id).first()
     if not product:
         raise HTTPException(status_code=404, detail="Product not found")
@@ -261,7 +284,8 @@ def get_retailers(db: Session = Depends(get_db)):
 from sqlalchemy import distinct
 
 @app.get("/tweets/suggestions")
-def get_tweet_suggestions(db: Session = Depends(get_db)):
+@admin_required
+def get_tweet_suggestions(request: Request, db: Session = Depends(get_db)):
     from collections import defaultdict
     import os
     import httpx
@@ -419,7 +443,8 @@ def get_tweet_suggestions(db: Session = Depends(get_db)):
 
 
 @app.get("/tweets/discounts")
-def get_discount_tweets(db: Session = Depends(get_db)):
+@admin_required
+def get_discount_tweets(request: Request, db: Session = Depends(get_db)):
     import os
     import httpx
     import json
@@ -524,7 +549,8 @@ def get_discount_tweets(db: Session = Depends(get_db)):
 
 
 @app.get("/tweets/top-discounts")
-def get_top_discount_tweets(db: Session = Depends(get_db)):
+@admin_required
+def get_top_discount_tweets(request: Request, db: Session = Depends(get_db)):
     import os
     import httpx
     import json
@@ -598,7 +624,8 @@ def get_top_discount_tweets(db: Session = Depends(get_db)):
 
 
 @app.get("/tweets/historical-difference")
-def get_biggest_historical_drop_tweet(db: Session = Depends(get_db)):
+@admin_required
+def get_biggest_historical_drop_tweet(request: Request, db: Session = Depends(get_db)):
     import os
     import httpx
     import json
@@ -696,7 +723,8 @@ def get_biggest_historical_drop_tweet(db: Session = Depends(get_db)):
 
 
 @app.get("/tweets/weekly-drops")
-def get_weekly_drop_tweets(db: Session = Depends(get_db)):
+@admin_required
+def get_weekly_drop_tweets(request: Request, db: Session = Depends(get_db)):
     import os
     import httpx
     import json
@@ -831,7 +859,8 @@ def get_weekly_drop_tweets(db: Session = Depends(get_db)):
     return resultados
 
 @app.get("/tweets/educational")
-def get_educational_tweets(db: Session = Depends(get_db)):
+@admin_required
+def get_educational_tweets(request: Request, db: Session = Depends(get_db)):
     import os
     import httpx
     import json
@@ -878,7 +907,8 @@ def get_educational_tweets(db: Session = Depends(get_db)):
         raise HTTPException(status_code=500, detail="Error al generar tweets educativos")
 
 @app.get("/tweets/polls")
-def get_poll_tweet_ideas(db: Session = Depends(get_db)):
+@admin_required
+def get_poll_tweet_ideas(request: Request, db: Session = Depends(get_db)):
     import os
     import httpx
     import json
@@ -952,7 +982,8 @@ def get_poll_tweet_ideas(db: Session = Depends(get_db)):
     return parsed
 
 @app.post("/tweets/post")
-def post_tweet(payload: dict):
+@admin_required
+def post_tweet(request: Request, payload: dict):
     import os
     from requests_oauthlib import OAuth1Session
 
@@ -1071,7 +1102,8 @@ def get_price_history(product_id: int, db: Session = Depends(get_db)):
     ]
 
 @app.get("/admin/stats")
-def get_admin_stats(db: Session = Depends(get_db)):
+@admin_required
+def get_admin_stats(request: Request, db: Session = Depends(get_db)):
     return {
         "total_products": db.query(models.Product).count(),
         "uncategorized_products": db.query(models.Product).filter(models.Product.category_id == None).count(),
@@ -1156,6 +1188,20 @@ def check_admin_login(data: dict = Body(...), request: Request = None):
     valid_pass = os.getenv("ADMIN_PASSWORD", "1234")
 
     if username == valid_user and password == valid_pass:
+        response = JSONResponse(content={"ok": True})
+        response.set_cookie(
+            key="admin_token",
+            value=os.getenv("ADMIN_TOKEN", "secret123"),
+            httponly=True,
+            secure=True,  # Solo si usás HTTPS
+            samesite="strict"
+        )
         return {"ok": True}
     else:
         raise HTTPException(status_code=401, detail="Credenciales inválidas")
+    
+@app.post("/admin/logout")
+def logout():
+    response = JSONResponse(content={"ok": True})
+    response.delete_cookie("admin_token")
+    return response

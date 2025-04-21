@@ -40,7 +40,7 @@ const [educationalTweets, setEducationalTweets] = useState<string[]>([])
     setLoadingPolls(true)
     try {
       const url = process.env.NEXT_PUBLIC_API_BASE_URL || ""
-      const res = await fetch(`${url}/tweets/polls`)
+      const res = await fetch(`${url}/tweets/polls`, { credentials: "include" })
       const data = await res.json()
       if (Array.isArray(data)) {
         setPollTweets(data)
@@ -57,7 +57,7 @@ const [educationalTweets, setEducationalTweets] = useState<string[]>([])
     setLoadingTips(true)
     try {
       const url = process.env.NEXT_PUBLIC_API_BASE_URL || ""
-      const res = await fetch(`${url}/tweets/educational`)
+      const res = await fetch(`${url}/tweets/educational`, { credentials: "include" })
       const data = await res.json()
       if (Array.isArray(data)) {
         setEducationalTweets(data)
@@ -74,7 +74,7 @@ const [educationalTweets, setEducationalTweets] = useState<string[]>([])
     setLoadingWeekly(true)
     try {
       const url = process.env.NEXT_PUBLIC_API_BASE_URL || ""
-      const res = await fetch(`${url}/tweets/weekly-drops`)
+      const res = await fetch(`${url}/tweets/weekly-drops`, { credentials: "include" })
       const data = await res.json()
       setWeeklyDrops(data)
       setView("weekly")
@@ -89,7 +89,7 @@ const [educationalTweets, setEducationalTweets] = useState<string[]>([])
     setLoadingHistorico(true)
     try {
       const url = process.env.NEXT_PUBLIC_API_BASE_URL || ""
-      const res = await fetch(`${url}/tweets/historical-difference`)
+      const res = await fetch(`${url}/tweets/historical-difference`, { credentials: "include" })
       const data = await res.json()
       setHistoricTweet(data)
       setView("historic")
@@ -105,7 +105,7 @@ const [educationalTweets, setEducationalTweets] = useState<string[]>([])
     setLoadingArbitrajes(true)
     try {
       const url = process.env.NEXT_PUBLIC_API_BASE_URL || ""
-      const res = await fetch(`${url}/tweets/suggestions`)
+      const res = await fetch(`${url}/tweets/suggestions`, { credentials: "include" })
       const data = await res.json()
   
       if (Array.isArray(data)) {
@@ -127,7 +127,7 @@ const [educationalTweets, setEducationalTweets] = useState<string[]>([])
     setLoadingDescuentos(true)
     try {
       const url = process.env.NEXT_PUBLIC_API_BASE_URL || ""
-      const res = await fetch(`${url}/tweets/discounts`)
+      const res = await fetch(`${url}/tweets/discounts`, { credentials: "include" })
       const data = await res.json()
       if (Array.isArray(data)) {
         setDiscountGroups(data)
@@ -146,7 +146,7 @@ const [educationalTweets, setEducationalTweets] = useState<string[]>([])
     setLoadingTop(true)
     try {
       const url = process.env.NEXT_PUBLIC_API_BASE_URL || ""
-      const res = await fetch(`${url}/tweets/top-discounts`)
+      const res = await fetch(`${url}/tweets/top-discounts`, { credentials: "include" })
       const data = await res.json()
       if (Array.isArray(data)) {
         setTopDiscountTweets(data)
@@ -176,6 +176,7 @@ const [educationalTweets, setEducationalTweets] = useState<string[]>([])
     try {
       const res = await fetch(url, {
         method: "POST",
+        credentials: "include",
         headers: {
           "Content-Type": "application/json",
         },

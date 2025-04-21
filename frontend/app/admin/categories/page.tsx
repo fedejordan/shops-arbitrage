@@ -23,7 +23,7 @@ export default function ManageCategories() {
   useEffect(() => {
     let url = `${process.env.NEXT_PUBLIC_API_BASE_URL}`
     fetch(`${url}/categories`).then(res => res.json()).then(setCategories)
-    fetch(`${url}/retailer-categories/unmapped`).then(res => res.json()).then(data => {
+    fetch(`${url}/retailer-categories/unmapped`, ).then(res => res.json()).then(data => {
       setRetailerCats(data)
       const initial: Record<number, number | null> = {}
       data.forEach((rc: RetailerCategory) => { initial[rc.id] = rc.category_id })
@@ -39,7 +39,8 @@ export default function ManageCategories() {
     setLoadingIds(prev => new Set(prev).add(rc_id))
     try {
       await fetch(`${url}/retailer-categories/${rc_id}/map?category_id=${category_id}`, {
-        method: "PATCH"
+        method: "PATCH",
+        credentials: "include",
       })
       setRetailerCats(prev => prev.filter(rc => rc.id !== rc_id))
     } catch (e) {

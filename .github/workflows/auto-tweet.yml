@@ -25,6 +25,8 @@ jobs:
       - name: Run auto tweet script
         env:
           API_BASE_URL: ${{ secrets.API_BASE_URL }}
+          ADMIN_USER: ${{ secrets.ADMIN_USER }}
+          ADMIN_PASSWORD: ${{ secrets.ADMIN_PASSWORD }}
         run: |
           cd backend
           python random-tweet.py
