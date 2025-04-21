@@ -7,6 +7,7 @@ import os
 from dotenv import load_dotenv
 import logging
 import re
+import html
 
 # ─────────────────────────────────────────────────────────────
 # Configuración del log de errores
@@ -111,6 +112,7 @@ for base_url in category_urls:
                     # title_tag = product.find("div", class_=lambda x: x and "product-card-design8-vertical__name" in x)
                     title_tag = product.find("div", class_=lambda cls: cls and "product-card" in cls and "__name" in cls)
                     title = title_tag.get_text(strip=True) if title_tag else "Sin título"
+                    title = html.escape(title)
                     
                     # Buscar marca del producto (nuevo)
                     # brand_tag = product.find("div", class_=lambda x: x and "product-card-design8-vertical__brand" in x)

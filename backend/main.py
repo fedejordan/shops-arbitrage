@@ -29,6 +29,8 @@ from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request as StarletteRequest
 from starlette.responses import JSONResponse
 import traceback
+import html
+
 
 # Configurar el logger para SQLAlchemy
 logging.basicConfig()
@@ -1101,7 +1103,7 @@ def get_product_with_description(product_id: int, db: Session = Depends(get_db))
         )
         ds_response.raise_for_status()
         description = ds_response.json()["choices"][0]["message"]["content"].strip()
-        product.ai_description = description
+        product.ai_description = html.escape(description)
         db.commit()
     except Exception as e:
         print("❌ DeepSeek falló:", e)

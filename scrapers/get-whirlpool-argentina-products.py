@@ -8,6 +8,7 @@ import os
 import re
 from dotenv import load_dotenv
 import logging
+import html
 
 # ─────────────────────────────────────────────────────────────
 # Logging
@@ -104,6 +105,7 @@ for base_url in category_urls:
             try:
                 title_tag = product.select_one("span.vtex-product-summary-2-x-brandName")
                 title = title_tag.get_text(strip=True) if title_tag else "N/A"
+                title = html.escape(title)
 
                 original_price_tag = product.select_one("div.whirlpoolargio-store-theme-1-x-ListPrice")
                 original_price_str = original_price_tag.get_text(strip=True) if original_price_tag else ""

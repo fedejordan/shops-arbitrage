@@ -12,6 +12,7 @@ from dotenv import load_dotenv
 import logging
 import re
 from datetime import datetime
+import html
 
 # ─────────────────────────────────────────────────────────────
 logging.basicConfig(
@@ -126,6 +127,7 @@ for base_url in category_urls:
                 try:
                     title = article.find("span", class_="sc-ca346929-0")
                     title_text = title.get_text(strip=True) if title else "Sin título"
+                    title_text = html.escape(title_text)
 
                     price_block = article.find("div", {"data-test-id": "product-price"})
                     original_price_tag = price_block.find("span", class_="sc-66d25270-0") if price_block else None

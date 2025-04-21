@@ -10,6 +10,7 @@ import time
 import psycopg2
 import os
 from dotenv import load_dotenv
+import html
 
 # ─────────────────────────────────────────────────────────────
 # Logging
@@ -136,6 +137,7 @@ for category_url in category_urls:
 
                     title_tag = section.find("h3") or section.find("span", class_="vtex-product-summary-2-x-productBrand")
                     title = title_tag.get_text(strip=True) if title_tag else ""
+                    title = html.escape(title)
 
                     a_tag = section.find("a", href=True)
                     link = "https://www.pardo.com.ar" + a_tag["href"] if a_tag else ""

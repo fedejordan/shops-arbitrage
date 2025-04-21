@@ -7,6 +7,7 @@ import os
 from dotenv import load_dotenv
 import logging
 import re
+import html
 
 # ─────────────────────────────────────────────────────────────
 # Configuración del log de errores
@@ -101,6 +102,7 @@ for category_url in categories_urls:
             try:
                 title_tag = product.select_one("h2.product.name.product-item-name a.product-item-link")
                 title = title_tag.get_text(strip=True) if title_tag else "Sin título"
+                title = html.escape(title)
 
                 sku_tag = product.select_one("p.sku-producto")
                 sku = sku_tag.get_text(strip=True) if sku_tag else "N/A"

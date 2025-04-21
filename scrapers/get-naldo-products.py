@@ -7,6 +7,7 @@ import os
 from dotenv import load_dotenv
 import logging
 import re
+import html
 
 # ─────────────────────────────────────────────────────────────
 # Configuración del log de errores
@@ -94,6 +95,7 @@ for base_url in category_urls:
                 try:
                     title_tag = product.find("span", class_="vtex-product-summary-2-x-productBrand")
                     title = title_tag.get_text(strip=True) if title_tag else "N/A"
+                    title = html.escape(title)
 
                     final_price_tag = product.select_one("span.vtex-product-price-1-x-sellingPriceValue")
                     final_price = final_price_tag.get_text(strip=True) if final_price_tag else ""

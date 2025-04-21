@@ -8,6 +8,7 @@ import os
 from dotenv import load_dotenv
 import logging
 import re
+import html
 
 # ─────────────────────────────────────────────────────────────
 # Configuración del log de errores
@@ -116,6 +117,8 @@ for base_url in category_urls:
         try:
             title_tag = product.find("a", class_="pd19-product-card__name")
             title = title_tag.get_text(strip=True) if title_tag else "Sin título"
+            title = html.escape(title)
+            
             link = "https://www.samsung.com" + title_tag["href"] if title_tag and "href" in title_tag.attrs else ""
 
             price_tag = product.find("strong", class_="pd19-product-card__current-price")

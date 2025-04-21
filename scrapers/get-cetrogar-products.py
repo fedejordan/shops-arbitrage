@@ -7,6 +7,7 @@ import os
 from dotenv import load_dotenv
 import logging
 import re
+import html
 
 # ─────────────────────────────────────────────────────────────
 # Configuración del log de errores
@@ -113,6 +114,7 @@ for base_url in category_urls:
                 try:
                     title_tag = product.find("div", class_="product name product-item-name")
                     title = title_tag.get_text(strip=True) if title_tag else "Sin título"
+                    title = html.escape(title)
 
                     link_tag = product.find("a", class_="product-item-info product-card", href=True)
                     link = link_tag["href"] if link_tag else ""

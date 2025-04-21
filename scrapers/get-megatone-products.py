@@ -7,6 +7,7 @@ import os
 from dotenv import load_dotenv
 import logging
 import re
+import html
 
 # ─────────────────────────────────────────────────────────────
 # Configuración del log de errores
@@ -102,6 +103,7 @@ for base_url in category_urls:
                 try:
                     title_tag = product.find("h3", class_="TituloListado")
                     title = title_tag.get_text(strip=True) if title_tag else "Sin Título"
+                    title = html.escape(title)
 
                     original_price_tag = product.select_one("div.PrecioTachado")
                     original_price_text = original_price_tag.get_text(strip=True) if original_price_tag else ""
