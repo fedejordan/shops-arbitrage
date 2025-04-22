@@ -4,6 +4,7 @@ import { useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Check, Clipboard, Twitter } from "lucide-react"
+import { apiFetch } from "@/lib/api"
 
 type TweetGroup = {
   case: number
@@ -39,8 +40,7 @@ const [educationalTweets, setEducationalTweets] = useState<string[]>([])
   const generatePolls = async () => {
     setLoadingPolls(true)
     try {
-      const url = process.env.NEXT_PUBLIC_API_BASE_URL || ""
-      const res = await fetch(`${url}/tweets/polls`, { credentials: "include" })
+      const res = await apiFetch("/tweets/polls")
       const data = await res.json()
       if (Array.isArray(data)) {
         setPollTweets(data)
@@ -56,8 +56,7 @@ const [educationalTweets, setEducationalTweets] = useState<string[]>([])
   const generateEducational = async () => {
     setLoadingTips(true)
     try {
-      const url = process.env.NEXT_PUBLIC_API_BASE_URL || ""
-      const res = await fetch(`${url}/tweets/educational`, { credentials: "include" })
+      const res = await apiFetch("/tweets/educational")
       const data = await res.json()
       if (Array.isArray(data)) {
         setEducationalTweets(data)
@@ -73,8 +72,7 @@ const [educationalTweets, setEducationalTweets] = useState<string[]>([])
   const generateWeeklyDrops = async () => {
     setLoadingWeekly(true)
     try {
-      const url = process.env.NEXT_PUBLIC_API_BASE_URL || ""
-      const res = await fetch(`${url}/tweets/weekly-drops`, { credentials: "include" })
+      const res = await apiFetch("/tweets/weekly-drops")
       const data = await res.json()
       setWeeklyDrops(data)
       setView("weekly")
@@ -88,8 +86,7 @@ const [educationalTweets, setEducationalTweets] = useState<string[]>([])
   const generateHistoricDrop = async () => {
     setLoadingHistorico(true)
     try {
-      const url = process.env.NEXT_PUBLIC_API_BASE_URL || ""
-      const res = await fetch(`${url}/tweets/historical-difference`, { credentials: "include" })
+      const res = await apiFetch("/tweets/historical-difference")
       const data = await res.json()
       setHistoricTweet(data)
       setView("historic")
@@ -104,8 +101,7 @@ const [educationalTweets, setEducationalTweets] = useState<string[]>([])
   const generateArbitrages = async () => {
     setLoadingArbitrajes(true)
     try {
-      const url = process.env.NEXT_PUBLIC_API_BASE_URL || ""
-      const res = await fetch(`${url}/tweets/suggestions`, { credentials: "include" })
+      const res = await apiFetch("/tweets/suggestions")
       const data = await res.json()
   
       if (Array.isArray(data)) {
@@ -126,8 +122,7 @@ const [educationalTweets, setEducationalTweets] = useState<string[]>([])
   const generateDiscounts = async () => {
     setLoadingDescuentos(true)
     try {
-      const url = process.env.NEXT_PUBLIC_API_BASE_URL || ""
-      const res = await fetch(`${url}/tweets/discounts`, { credentials: "include" })
+      const res = await fetch("/tweets/discounts")
       const data = await res.json()
       if (Array.isArray(data)) {
         setDiscountGroups(data)
@@ -145,8 +140,7 @@ const [educationalTweets, setEducationalTweets] = useState<string[]>([])
   const generateTopDiscounts = async () => {
     setLoadingTop(true)
     try {
-      const url = process.env.NEXT_PUBLIC_API_BASE_URL || ""
-      const res = await fetch(`${url}/tweets/top-discounts`, { credentials: "include" })
+      const res = await apiFetch("/tweets/top-discounts")
       const data = await res.json()
       if (Array.isArray(data)) {
         setTopDiscountTweets(data)
@@ -171,12 +165,10 @@ const [educationalTweets, setEducationalTweets] = useState<string[]>([])
   }
 
   const handleTweet = async (text: string, id: string) => {
-    const url = process.env.NEXT_PUBLIC_API_BASE_URL + "/tweets/post"
     setTweetingId(id)
     try {
-      const res = await fetch(url, {
+      const res = await apiFetch("/tweets/post", {
         method: "POST",
-        credentials: "include",
         headers: {
           "Content-Type": "application/json",
         },

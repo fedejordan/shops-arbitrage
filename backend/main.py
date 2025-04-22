@@ -31,7 +31,7 @@ from starlette.responses import JSONResponse
 import traceback
 import html
 from starlette.middleware import Middleware
-from secure import SecureHeaders
+from secure import Secure
 
 # Configurar el logger para SQLAlchemy
 logging.basicConfig()
@@ -42,21 +42,6 @@ load_dotenv()
 
 # Cargar las variables de entorno desde el archivo .env
 app = FastAPI(debug=False)
-
-class ExceptionHandlerMiddleware(BaseHTTPMiddleware):
-    async def dispatch(self, request: StarletteRequest, call_next):
-        try:
-            response = await call_next(request)
-            return response
-        except Exception as exc:
-            # Log interno con stacktrace si lo necesitás para debug (NO lo devuelvas)
-            logging.error("Error inesperado: %s", traceback.format_exc())
-            return JSONResponse(
-                status_code=500,
-                content={"detail": "Error interno del servidor"},
-            )
-
-app.add_middleware(ExceptionHandlerMiddleware)
 
 # Configurar rate limiting
 limiter = Limiter(key_func=get_remote_address)
@@ -69,7 +54,7 @@ Base.metadata.create_all(bind=engine)
 # Configurar CORS para desarrollo (ajusta en producción)
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["https://tuprecioideal.ar", "https://www.tuprecioideal.ar"], # http://localhost:3000
+    allow_origins=["https://tuprecioideal.ar", "https://www.tuprecioideal.ar", "http://localhost:3000"], # http://localhost:3000
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -107,21 +92,38 @@ def admin_required(endpoint):
         
     return wrapper
 
-secure_headers = SecureHeaders()
+secure = Secure()
 
-@app.middleware("http")
-async def set_secure_headers(request: Request, call_next):
-    response = await call_next(request)
-    secure_headers.starlette(response)
-    return response
+class SecureHeadersMiddleware(BaseHTTPMiddleware):
+    async def dispatch(self, request, call_next):
+        response = await call_next(request)
+        print("✅ Middleware de headers ejecutado")
+        for header, value in secure.headers.items():
+            response.headers[header] = value
+        return response
 
-@app.middleware("http")
-async def fix_proto_header(request: Request, call_next):
-    if request.headers.get("x-forwarded-proto") == "https":
-        scope = request.scope
-        scope["scheme"] = "https"
-    response = await call_next(request)
-    return response
+class FixProtoHeaderMiddleware(BaseHTTPMiddleware):
+    async def dispatch(self, request, call_next):
+        if request.headers.get("x-forwarded-proto") == "https":
+            request.scope["scheme"] = "https"
+        return await call_next(request)
+
+class ExceptionHandlerMiddleware(BaseHTTPMiddleware):
+    async def dispatch(self, request: StarletteRequest, call_next):
+        try:
+            response = await call_next(request)
+            return response
+        except Exception as exc:
+            # Log interno con stacktrace si lo necesitás para debug (NO lo devuelvas)
+            logging.error("Error inesperado: %s", traceback.format_exc())
+            return JSONResponse(
+                status_code=500,
+                content={"detail": "Error interno del servidor"},
+            )
+
+app.add_middleware(ExceptionHandlerMiddleware)
+app.add_middleware(FixProtoHeaderMiddleware)
+app.add_middleware(SecureHeadersMiddleware)
 
 
 # Endpoint para obtener productos, con opción de búsqueda por título
@@ -1226,17 +1228,24 @@ def check_admin_login(data: schemas.AdminLoginRequest, request: Request = None):
     valid_user = os.getenv("ADMIN_USER", "admin")
     valid_pass = os.getenv("ADMIN_PASSWORD", "1234")
 
+
     if username == valid_user and password == valid_pass:
+
         response = JSONResponse(content={"ok": True})
         response.set_cookie(
             key="admin_token",
             value=os.getenv("ADMIN_TOKEN", "secret123"),
             httponly=True,
-            secure=True,  # Solo si usás HTTPS
-            samesite="strict"
+            secure=False,  # Solo si usás HTTPS
+            samesite="lax",
+            path="/"
         )
-        return {"ok": True}
+
+
+        return response
     else:
+        print("🔴 Credenciales inválidas")
+
         raise HTTPException(status_code=401, detail="Credenciales inválidas")
     
 @app.post("/admin/logout", response_model=schemas.SimpleOKResponse)

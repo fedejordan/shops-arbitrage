@@ -1,13 +1,13 @@
 "use client"
 
 import { useEffect, useState } from "react"
+import { apiFetch } from "@/lib/api"
 
 export default function AuthWrapper({ children }: { children: React.ReactNode }) {
   const [authenticated, setAuthenticated] = useState(false)
   const [username, setUsername] = useState("")
   const [password, setPassword] = useState("")
   const [loading, setLoading] = useState(true)
-  const url = process.env.NEXT_PUBLIC_API_BASE_URL
 
   useEffect(() => {
     const isLoggedIn = localStorage.getItem("authenticated") === "true"
@@ -17,7 +17,7 @@ export default function AuthWrapper({ children }: { children: React.ReactNode })
 
   const handleLogin = async () => {
     try {
-      const res = await fetch(`${url}/admin/login-check`, {
+      const res = await apiFetch("/admin/login-check", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ username, password }),
@@ -38,9 +38,8 @@ export default function AuthWrapper({ children }: { children: React.ReactNode })
 
   const handleLogout = async () => {
     try {
-      await fetch(`${url}/admin/logout`, {
-        method: "POST",
-        credentials: "include", // 🔑 necesario para que se envíe la cookie
+      await apiFetch("/admin/logout", {
+        method: "POST"
       })
     } catch (error) {
       console.error("Error al hacer logout", error)

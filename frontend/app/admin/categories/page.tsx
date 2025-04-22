@@ -9,6 +9,7 @@ import {
     SelectContent,
     SelectItem
   } from "@/components/ui/select"
+import { apiFetch } from "@/lib/api"
 
 type Category = { id: number, name: string }
 type RetailerCategory = { id: number, name: string, retailer_id: number, category_id: number | null }
@@ -21,9 +22,8 @@ export default function ManageCategories() {
 
 
   useEffect(() => {
-    let url = `${process.env.NEXT_PUBLIC_API_BASE_URL}`
-    fetch(`${url}/categories`).then(res => res.json()).then(setCategories)
-    fetch(`${url}/retailer-categories/unmapped`, ).then(res => res.json()).then(data => {
+    apiFetch("/categories").then(res => res.json()).then(setCategories)
+    apiFetch("/retailer-categories/unmapped").then(res => res.json()).then(data => {
       setRetailerCats(data)
       const initial: Record<number, number | null> = {}
       data.forEach((rc: RetailerCategory) => { initial[rc.id] = rc.category_id })
@@ -38,9 +38,8 @@ export default function ManageCategories() {
   
     setLoadingIds(prev => new Set(prev).add(rc_id))
     try {
-      await fetch(`${url}/retailer-categories/${rc_id}/map?category_id=${category_id}`, {
-        method: "PATCH",
-        credentials: "include",
+      await apiFetch(`/retailer-categories/${rc_id}/map?category_id=${category_id}`, {
+        method: "PATCH"
       })
       setRetailerCats(prev => prev.filter(rc => rc.id !== rc_id))
     } catch (e) {

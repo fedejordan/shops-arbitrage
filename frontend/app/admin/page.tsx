@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react"
 import { Skeleton } from "@/components/ui/skeleton"
+import { apiFetch } from "@/lib/api";
 
 type Stats = {
   total_products: number
@@ -21,10 +22,8 @@ export default function AdminHome() {
   const [stats, setStats] = useState<Stats | null>(null)
   const [loading, setLoading] = useState(true)
 
-  const url = process.env.NEXT_PUBLIC_API_BASE_URL
-
   useEffect(() => {
-    fetch(`${url}/admin/stats`, { credentials: "include" })
+    apiFetch("/admin/stats")
       .then(res => res.json())
       .then(data => {
         setStats(data)
@@ -77,7 +76,9 @@ function StatCard({ label, value }: { label: string; value: number }) {
   return (
     <div className="p-4 border rounded-lg bg-white shadow-sm">
       <p className="text-sm text-muted-foreground">{label}</p>
-      <p className="text-2xl font-bold">{value.toLocaleString()}</p>
+      <p className="text-2xl font-bold">
+        {typeof value === "number" ? value.toLocaleString() : "—"}
+      </p>
     </div>
   )
 }

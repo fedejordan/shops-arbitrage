@@ -9,6 +9,7 @@ import {
     SelectContent,
     SelectItem
   } from "@/components/ui/select"
+import { apiFetch } from "@/lib/api"
 
 type Category = { id: number, name: string }
 type Product = {
@@ -33,8 +34,8 @@ export default function ManageUncategorizedProducts() {
   const url = process.env.NEXT_PUBLIC_API_BASE_URL
 
   useEffect(() => {
-    fetch(`${url}/categories`).then(res => res.json()).then(setCategories)
-    fetch(`${url}/products/uncategorized/count`, { credentials: "include" }).then(res => res.json()).then(data => {
+    apiFetch("/categories").then(res => res.json()).then(setCategories)
+    apiFetch("/products/uncategorized/count").then(res => res.json()).then(data => {
       setTotal(data.count)
     })
     loadProducts(0)
@@ -42,7 +43,7 @@ export default function ManageUncategorizedProducts() {
 
   const loadProducts = async (currentOffset: number) => {
     setLoadingMore(true)
-    const res = await fetch(`${url}/products/uncategorized?offset=${currentOffset}&limit=${LIMIT}`, { credentials: "include" })
+    const res = await apiFetch(`/products/uncategorized?offset=${currentOffset}&limit=${LIMIT}`)
     const data: Product[] = await res.json()
     setProducts(prev => [...prev, ...data])
     const initial: Record<number, number | null> = {}
@@ -58,9 +59,8 @@ export default function ManageUncategorizedProducts() {
 
     setLoadingIds(prev => new Set(prev).add(product_id))
     try {
-      await fetch(`${url}/products/${product_id}/assign-category?category_id=${category_id}`, {
-        method: "PATCH",
-        credentials: "include"
+      await apiFetch(`/products/${product_id}/assign-category?category_id=${category_id}`, {
+        method: "PATCH"
       })
       setProducts(prev => prev.filter(p => p.id !== product_id))
     } catch (e) {
@@ -77,9 +77,8 @@ export default function ManageUncategorizedProducts() {
   const handleSuggest = async (product_id: number) => {
     setLoadingIds(prev => new Set(prev).add(product_id))
     try {
-      const res = await fetch(`${url}/products/${product_id}/suggest-category`, { 
-        method: "POST",
-        credentials: "include",
+      const res = await apiFetch(`${url}/products/${product_id}/suggest-category`, { 
+        method: "POST"
       })
       const data = await res.json()
       const suggestedId = data.suggested_category_id

@@ -21,14 +21,25 @@ const nextConfig = {
     parallelServerBuildTraces: true,
     parallelServerCompiles: true,
   },
+  async rewrites() {
+    const isDev = process.env.NODE_ENV === 'development'
+    console.log("✅ Cargando rewrites - isDev:", isDev)
+
+    return isDev
+      ? [
+          {
+            source: '/proxy/:path*',
+            destination: 'http://localhost:8000/:path*',
+          },
+        ]
+      : []
+  }
 }
 
 mergeConfig(nextConfig, userConfig)
 
 function mergeConfig(nextConfig, userConfig) {
-  if (!userConfig) {
-    return
-  }
+  if (!userConfig) return
 
   for (const key in userConfig) {
     if (
